@@ -5,3 +5,11 @@ authors = ["Antoine Gourlay <antoine@gourlay.fr>"]
 edition = "2018"
 
 [dependencies]
+anyhow = "1"
+log = '0.4'
+env_logger = '0.7'
+
+[dependencies.structopt]
+version = '0.3'
+default-features = false
+features = ['suggestions']

@@ -1,0 +1,7 @@
+[package]
+name = "dcam"
+version = "0.1.0-dev"
+authors = ["Antoine Gourlay <antoine@gourlay.fr>"]
+edition = "2018"
+
+[dependencies]

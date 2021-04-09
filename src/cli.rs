@@ -1,9 +1,21 @@
+use std::path::PathBuf;
+
+use crate::Resolution;
 use log::LevelFilter;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Use android device as webcam with v4l2loopback")]
 pub struct ProgramOptions {
+    #[structopt(long, short, default_value = "8080")]
+    pub port: u16,
+
+    #[structopt(long, short, default_value = "/dev/video0")]
+    pub device: PathBuf,
+
+    #[structopt(long, short, default_value = "640x480")]
+    pub resolution: Resolution,
+
     #[structopt(long, short, global = true, parse(from_occurrences))]
     verbose: i8,
 

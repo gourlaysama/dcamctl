@@ -1,4 +1,3 @@
-use std::process::Command;
 use std::{
     path::Path,
     sync::mpsc::{self, Receiver},
@@ -7,10 +6,9 @@ use std::{
 
 use anyhow::*;
 use dcam::cli::ProgramOptions;
+use dcam::{AdbServer, Pipeline};
 use env_logger::{Builder, Env};
-use gstreamer::prelude::*;
 use log::*;
-use mpsc::TryRecvError;
 use structopt::StructOpt;
 
 type ReturnCode = i32;
@@ -41,80 +39,17 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
     check_kernel_module()?;
 
     // start adb-server if not already started
-    let res = Command::new("adb").arg("start-server").status()?;
-    if !res.success() {
-        bail!("Could not start adb server");
-    }
-    // add forwarding rule
-    let port = format!("tcp:{}", options.port);
-    let res = Command::new("adb")
-        .arg("forward")
-        .arg(&port)
-        .arg(&port)
-        .status()?;
-    if !res.success() {
-        bail!("Could not enable tcp forwarding");
-    }
+    AdbServer::init()?;
 
-    let device = format!("device={}", options.device.to_string_lossy());
-    let caps = format!(
-        "video/x-raw,format=YUY2,width={},height={}",
-        options.resolution.width, options.resolution.height
-    );
+    // add forwarding rule
+    let _guard = AdbServer::forward_port(options.port)?;
 
     gstreamer::init()?;
 
-    let pipeline = gstreamer::parse_launch(
-        &format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", options.port, caps, device))?;
-
-    pipeline.set_state(gstreamer::State::Playing)?;
+    let pipeline = Pipeline::new(&options.device, options.resolution, options.port)?;
 
     println!("Press <Enter> to disconnect the webcam.");
-    let stdin_channel = watch_stdin();
-
-    let bus = match pipeline.get_bus() {
-        Some(b) => b,
-        None => bail!("No bus for gstreamer pipeline"),
-    };
-    loop {
-        let msg = bus.timed_pop(100 * gstreamer::MSECOND);
-        if let Some(msg) = msg {
-            use gstreamer::MessageView;
-
-            match msg.view() {
-                MessageView::Eos(..) => break,
-                MessageView::Error(err) => {
-                    error!(
-                        "Error from {:?}: {} ({:?})",
-                        err.get_src().map(|s| s.get_path_string()),
-                        err.get_error(),
-                        err.get_debug()
-                    );
-                    break;
-                }
-                _ => {}
-            }
-        }
-
-        match stdin_channel.try_recv() {
-            Ok(_) => break,
-            Err(TryRecvError::Empty) => {}
-            Err(a) => return Err(anyhow!("Internal threading error").context(a)),
-        }
-    }
-
-    // Shutdown pipeline
-    pipeline.set_state(gstreamer::State::Null)?;
-
-    // remove forwarding rule
-    let res = Command::new("adb")
-        .arg("forward")
-        .arg("--remove")
-        .arg(&port)
-        .status()?;
-    if !res.success() {
-        bail!("Could not disable tcp forwarding");
-    }
+    pipeline.run(watch_stdin())?;
 
     Ok(0)
 }

@@ -8,6 +8,7 @@ edition = "2018"
 anyhow = "1"
 log = '0.4'
 env_logger = '0.7'
+gstreamer = "0.16"
 
 [dependencies.structopt]
 version = '0.3'

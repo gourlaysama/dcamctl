@@ -3,7 +3,7 @@ macro_rules! run_cmd {
         if log_enabled!(log::Level::Trace) {
             trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
         }
-        match std::process::Command::new($nme).args(&[$($args,)*]).status().context($ctx) {
+        match std::process::Command::new($nme).args(&[$($args,)*]).stdout(std::process::Stdio::null()).status().context($ctx) {
             Err(e) => error!("{}", e),
             Ok(s) => {
                 if !s.success() {
@@ -16,7 +16,7 @@ macro_rules! run_cmd {
         if log_enabled!(log::Level::Trace) {
             trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
         }
-        let s = std::process::Command::new($nme).args(&[$($args,)*]).status().context($ctx)?;
+        let s = std::process::Command::new($nme).args(&[$($args,)*]).stdout(std::process::Stdio::null()).status().context($ctx)?;
         if !s.success() {
             bail!("{} (got {})", $ctx, s);
         }

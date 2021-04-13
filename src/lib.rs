@@ -11,6 +11,58 @@ use log::*;
 
 pub mod cli;
 
+macro_rules! run_cmd {
+    ($nme:expr, $($args:expr),* => $ctx:expr, $oncode:expr) => {
+        if log_enabled!(log::Level::Trace) {
+            trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
+        }
+        match Command::new($nme).args(&[$($args,)*]).status().context($ctx) {
+            Err(e) => error!("{}", e),
+            Ok(s) => {
+                if !s.success() {
+                    $oncode(s)
+                }
+            }
+        }
+    };
+    ($nme:expr, $($args:expr),* => $ctx:expr) => {
+        if log_enabled!(log::Level::Trace) {
+            trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
+        }
+        match Command::new($nme).args(&[$($args,)*]).status().context($ctx) {
+            Err(e) => bail!("{}", e),
+            Ok(s) => {
+                if !s.success() {
+                    bail!("{} (got {})", $ctx, s);
+                }
+            }
+        }
+    };
+}
+
+macro_rules! get_cmd {
+    ($nme:expr, $($args:expr),* => $ctx:expr, $oncode:expr) => {{
+        if log_enabled!(log::Level::Trace) {
+            trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
+        }
+        let o = Command::new($nme).args(&[$($args,)*]).output().context($ctx)?;
+        if !o.status.success() {
+            $oncode(o.status);
+        };
+        o
+    }};
+    ($nme:expr, $($args:expr),* => $ctx:expr) => {{
+        if log_enabled!(log::Level::Trace) {
+            trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
+        }
+        let o = Command::new($nme).args(&[$($args,)*]).output().context($ctx)?;
+        if !o.status.success() {
+            bail!("{} (got {})", $ctx, o.status);
+        };
+        o
+    }};
+}
+
 #[derive(Debug)]
 pub struct Resolution {
     pub height: u16,
@@ -174,10 +226,7 @@ pub struct AudioSupport {
 
 impl AudioSupport {
     pub fn from_pulseaudio() -> Result<AudioSupport> {
-        let output = Command::new("pacmd")
-            .arg("dump")
-            .output()
-            .context("failed to dump pactl")?;
+        let output = get_cmd!("pacmd", "dump" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
         let mut default_sink = String::new();
         let mut default_source = String::new();
@@ -200,16 +249,14 @@ impl AudioSupport {
         debug!("default_sink={}", default_sink);
         debug!("default_source={}", default_source);
 
-        let output = Command::new("pactl")
-            .args(&[
-                "load-module",
-                "module-null-sink",
-                "sink_name=dcam_webcam",
-                "format=S16LE rate=44100 channels=1",
-                "sink_properties=\"device.description='DCam Webcam Virtual Microphone'\"",
-            ])
-            .output()
-            .context("failed to load dcam audio module")?;
+        let output = get_cmd!(
+            "pactl",
+            "load-module",
+            "module-null-sink",
+            "sink_name=dcam_webcam",
+            "format=S16LE rate=44100 channels=1",
+            "sink_properties=\"device.description='DCam Webcam Virtual Microphone'\""
+             => "failed to load dcam audio module");
 
         let sink_id: u32 = String::from_utf8_lossy(&output.stdout)
             .trim()
@@ -217,20 +264,19 @@ impl AudioSupport {
             .context("failed to parse sink_id")?;
         debug!("sink_id={}", sink_id);
 
-        let output = Command::new("pactl")
-            .args(&[
-                "load-module",
-                "module-echo-cancel",
-                "sink_name=dcam_webcam_echo_cancel",
-                "source_master=dcam_webcam.monitor",
-                &format!("sink_master={}", default_sink),
-                "format=S16LE rate=44100 channels=1",
-                "aec_method=\"webrtc\"",
-                "save_aec=true",
-                "use_volume_sharing=true",
-            ])
-            .output()
-            .context("failed to load echo cancellation module")?;
+        let output = get_cmd!(
+            "pactl",
+            "load-module",
+            "module-echo-cancel",
+            "sink_name=dcam_webcam_echo_cancel",
+            "source_master=dcam_webcam.monitor",
+            &format!("sink_master={}", default_sink),
+            "format=S16LE rate=44100 channels=1",
+            "aec_method=\"webrtc\"",
+            "save_aec=true",
+            "use_volume_sharing=true"
+            => "failed to load echo cancellation module"
+        );
 
         let cancel_sink_id: u32 = String::from_utf8_lossy(&output.stdout)
             .trim()
@@ -238,15 +284,7 @@ impl AudioSupport {
             .context("failed to parse cancel_sink_id")?;
         debug!("cancel_sink_id={}", cancel_sink_id);
 
-        let status = Command::new("pactl")
-            .args(&["set-default-source", "dcam_webcam.monitor"])
-            .status()
-            .context("failed to set default source")?;
-        ensure!(
-            status.success(),
-            "failed to set default source, returned {}",
-            status
-        );
+        run_cmd!("pactl", "set-default-source", "dcam_webcam.monitor" => "failed to set dcam as default source");
 
         Ok(AudioSupport {
             default_source,
@@ -258,52 +296,28 @@ impl AudioSupport {
 
 impl Drop for AudioSupport {
     fn drop(&mut self) {
-        match Command::new("pactl")
-            .args(&["set-default-source", &self.default_source])
-            .status()
-            .context("failed to reset default source")
-        {
-            Err(e) => error!("{}", e),
-            Ok(s) => {
-                if !s.success() {
-                    warn!(
-                        "error trying to set default source back to {} (returned {})",
-                        self.default_source, s
-                    );
-                }
-            }
-        }
+        run_cmd!("pactl", "set-default-source", &self.default_source =>
+            "failed to reset default source",
+            |s| warn!(
+                "error trying to set default source back to {} (returned {})",
+                self.default_source, s
+            )
+        );
 
-        match Command::new("pactl")
-            .args(&["unload-module", &self.cancel_sink_id.to_string()])
-            .status()
-            .context("failed to unload echo cancellation module")
-        {
-            Err(e) => error!("{}", e),
-            Ok(s) => {
-                if !s.success() {
-                    warn!(
-                        "error trying to unload echo cancelation module, id={} (returned {})",
-                        self.cancel_sink_id, s
-                    );
-                }
-            }
-        }
+        run_cmd!("pactl", "unload-module", &self.cancel_sink_id.to_string() =>
+            "failed to unload echo cancellation module",
+            |s| warn!(
+                "error trying to unload echo cancelation module, id={} (returned {})",
+                self.cancel_sink_id, s
+            )
+        );
 
-        match Command::new("pactl")
-            .args(&["unload-module", &self.sink_id.to_string()])
-            .status()
-            .context("failed to unload dcam audio module")
-        {
-            Err(e) => error!("{}", e),
-            Ok(s) => {
-                if !s.success() {
-                    warn!(
-                        "error trying to unload webcam audio module, id={} (returned {})",
-                        self.cancel_sink_id, s
-                    );
-                }
-            }
-        }
+        run_cmd!("pactl", "unload-module", &self.sink_id.to_string() =>
+            "failed to unload dcam audio module",
+            |s| warn!(
+                "error trying to unload webcam audio module, id={} (returned {})",
+                self.sink_id, s
+            )
+        );
     }
 }

@@ -88,7 +88,8 @@ impl Pipeline {
         resolution: Resolution,
         port: u16,
     ) -> Result<Pipeline> {
-        let device_str = format!("device={}", device.to_string_lossy());
+
+        let device_str = device.to_string_lossy();
         let caps = format!(
             "video/x-raw,format=YUY2,width={},height={}",
             resolution.width, resolution.height
@@ -97,14 +98,16 @@ impl Pipeline {
         if audio.is_some() {
             pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port));
         }
-        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", port, caps, device_str));
+        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, caps, device_str));
 
         let pipeline = gstreamer::parse_launch(&pipeline_desc)?;
 
         info!(
             "set up video input '{}' with resolution {}",
-            device.to_string_lossy(), resolution
+            device_str,
+            resolution
         );
+        println!("  Video     : {}", device_str);
 
         Ok(Pipeline {
             pipeline,
@@ -171,6 +174,7 @@ impl Drop for Pipeline {
 
 pub struct AudioSupport {
     default_source: String,
+    default_sink: String,
     sink_id: u32,
     cancel_sink_id: u32,
 }
@@ -209,7 +213,7 @@ impl AudioSupport {
             "module-null-sink",
             "sink_name=dcamctl_webcam",
             "format=S16LE rate=44100 channels=1",
-            "sink_properties=\"device.description='dcamctl Webcam Virtual Microphone'\""
+            "sink_properties=\"device.description='dcamctl (raw)'\""
              => "failed to load dcamctl audio module");
 
         let sink_id: u32 = String::from_utf8_lossy(&output.stdout)
@@ -222,9 +226,12 @@ impl AudioSupport {
             "pactl",
             "load-module",
             "module-echo-cancel",
-            "sink_name=dcamctl_webcam_echo_cancel",
             "source_master=dcamctl_webcam.monitor",
+            "source_name=dcamctl_webcam_ec_src",
+            "source_properties=\"device.description='Webcam Virtual Microphone (EC-cancelled)'\"",
             &format!("sink_master={}", default_sink),
+            "sink_name=dcamctl_webcam_ec_aout",
+            "sink_properties=\"device.description='Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'\"",
             "format=S16LE rate=44100 channels=1",
             "aec_method=\"webrtc\"",
             "save_aec=true",
@@ -238,12 +245,18 @@ impl AudioSupport {
             .context("failed to parse cancel_sink_id")?;
         trace!("cancel_sink_id={}", cancel_sink_id);
 
-        run_cmd!("pactl", "set-default-source", "dcamctl_webcam.monitor" => "failed to set dcamctl as default source");
+        run_cmd!("pactl", "set-default-source", "dcamctl_webcam_ec_src" => "failed to set dcamctl as default source");
+        run_cmd!("pactl", "set-default-sink", "dcamctl_webcam_ec_aout" => "failed to set dcamctl as default sink");
 
-        info!("set up audio input 'dcamctl Webcam Virtual Microphone'");
+        info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
+        info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
+        println!("Setting temporary defaults:");
+        println!("  Microphone: Webcam Virtual Microphone (EC-cancelled)");
+        println!("  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)");
 
         Ok(AudioSupport {
             default_source,
+            default_sink,
             sink_id,
             cancel_sink_id,
         })
@@ -257,6 +270,14 @@ impl Drop for AudioSupport {
             |s| warn!(
                 "error trying to set default source back to {} (returned {})",
                 self.default_source, s
+            )
+        );
+
+        run_cmd!("pactl", "set-default-sink", &self.default_sink =>
+            "failed to reset default sink",
+            |s| warn!(
+                "error trying to set default sink back to {} (returned {})",
+                self.default_sink, s
             )
         );
 

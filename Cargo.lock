@@ -57,7 +57,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dcam"
+name = "dcamctl"
 version = "0.1.0-dev"
 dependencies = [
  "anyhow",

@@ -1,6 +1,6 @@
 # Changelog
 
-**dcam** is a command line tool to use an android device connected over USB as a webcam.
+**dcamctl** is a command line tool to use an android device connected over USB as a webcam.
 
 <!-- next-header -->
 ## [Unreleased] - TBD
@@ -14,4 +14,4 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcam/compare/a6e91ef...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...HEAD

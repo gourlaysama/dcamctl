@@ -5,8 +5,8 @@ use std::{
 };
 
 use anyhow::*;
-use dcam::cli::ProgramOptions;
-use dcam::{AdbServer, AudioSupport, Pipeline};
+use dcamctl::cli::ProgramOptions;
+use dcamctl::{AdbServer, AudioSupport, Pipeline};
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
@@ -16,7 +16,7 @@ type ReturnCode = i32;
 fn main() -> Result<()> {
     let options = ProgramOptions::from_args();
 
-    let mut b = Builder::from_env(Env::from("DCAM_LOG"));
+    let mut b = Builder::from_env(Env::from("DCAMCTL_LOG"));
     b.format_timestamp(None);
     if let Some(level) = options.log_level_with_default(2) {
         b.filter_level(level);

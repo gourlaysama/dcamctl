@@ -1,5 +1,5 @@
 [package]
-name = "dcam"
+name = "dcamctl"
 version = "0.1.0-dev"
 authors = ["Antoine Gourlay <antoine@gourlay.fr>"]
 edition = "2018"

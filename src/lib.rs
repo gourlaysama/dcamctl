@@ -28,13 +28,21 @@ impl FromStr for Resolution {
         } else {
             bail!("No width found")
         };
-        let height: u16 = if let Some(left) = parts.next() {
-            left.parse()?
+        let height: u16 = if let Some(right) = parts.next() {
+            right.parse()?
         } else {
             bail!("No height found")
         };
 
         Ok(Self { height, width })
+    }
+}
+
+impl std::fmt::Display for Resolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}x{}", self.width, self.height)?;
+
+        Ok(())
     }
 }
 
@@ -54,6 +62,7 @@ impl AdbServer {
     pub fn forward_port(port: u16) -> Result<AdbServerGuard> {
         let port_str = format!("tcp:{}", port);
         run_cmd!("adb", "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
+        debug!("forwarding adb port {} to 127.0.0.1:{}", port, port);
 
         Ok(AdbServerGuard { port })
     }
@@ -79,7 +88,7 @@ impl Pipeline {
         resolution: Resolution,
         port: u16,
     ) -> Result<Pipeline> {
-        let device = format!("device={}", device.to_string_lossy());
+        let device_str = format!("device={}", device.to_string_lossy());
         let caps = format!(
             "video/x-raw,format=YUY2,width={},height={}",
             resolution.width, resolution.height
@@ -88,9 +97,14 @@ impl Pipeline {
         if audio.is_some() {
             pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port));
         }
-        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", port, caps, device));
+        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", port, caps, device_str));
 
         let pipeline = gstreamer::parse_launch(&pipeline_desc)?;
+
+        info!(
+            "set up video input '{}' with resolution {}",
+            device.to_string_lossy(), resolution
+        );
 
         Ok(Pipeline {
             pipeline,
@@ -100,6 +114,7 @@ impl Pipeline {
 
     pub fn run(&self, stop: Receiver<()>) -> Result<()> {
         self.pipeline.set_state(gstreamer::State::Playing)?;
+        debug!("running pipeline");
 
         let bus = match self.pipeline.get_bus() {
             Some(b) => b,
@@ -111,7 +126,10 @@ impl Pipeline {
                 use gstreamer::MessageView;
 
                 match msg.view() {
-                    MessageView::Eos(..) => break,
+                    MessageView::Eos(..) => {
+                        warn!("received end-of-stream, quitting");
+                        break;
+                    }
                     MessageView::Error(err) => {
                         error!(
                             "Error from {:?}: {} ({:?})",
@@ -126,7 +144,10 @@ impl Pipeline {
             }
 
             match stop.try_recv() {
-                Ok(_) => break,
+                Ok(_) => {
+                    debug!("Received quit command; quitting");
+                    break;
+                }
                 Err(TryRecvError::Empty) => {}
                 Err(a) => return Err(anyhow!("Internal threading error").context(a)),
             }
@@ -179,8 +200,8 @@ impl AudioSupport {
                 _ => {}
             }
         }
-        debug!("default_sink={}", default_sink);
-        debug!("default_source={}", default_source);
+        trace!("default_sink = {}", default_sink);
+        trace!("default_source = {}", default_source);
 
         let output = get_cmd!(
             "pactl",
@@ -195,7 +216,7 @@ impl AudioSupport {
             .trim()
             .parse()
             .context("failed to parse sink_id")?;
-        debug!("sink_id={}", sink_id);
+        trace!("sink_id = {}", sink_id);
 
         let output = get_cmd!(
             "pactl",
@@ -215,9 +236,11 @@ impl AudioSupport {
             .trim()
             .parse()
             .context("failed to parse cancel_sink_id")?;
-        debug!("cancel_sink_id={}", cancel_sink_id);
+        trace!("cancel_sink_id={}", cancel_sink_id);
 
         run_cmd!("pactl", "set-default-source", "dcamctl_webcam.monitor" => "failed to set dcamctl as default source");
+
+        info!("set up audio input 'dcamctl Webcam Virtual Microphone'");
 
         Ok(AudioSupport {
             default_source,

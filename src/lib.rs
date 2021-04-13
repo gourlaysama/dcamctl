@@ -29,13 +29,9 @@ macro_rules! run_cmd {
         if log_enabled!(log::Level::Trace) {
             trace!("running '{}' with arguments '{:?}'", $nme, &[$($args,)*]);
         }
-        match Command::new($nme).args(&[$($args,)*]).status().context($ctx) {
-            Err(e) => bail!("{}", e),
-            Ok(s) => {
-                if !s.success() {
-                    bail!("{} (got {})", $ctx, s);
-                }
-            }
+        let s = Command::new($nme).args(&[$($args,)*]).status().context($ctx)?;
+        if !s.success() {
+            bail!("{} (got {})", $ctx, s);
         }
     };
 }
@@ -97,24 +93,14 @@ pub struct AdbServerGuard {
 
 impl AdbServer {
     pub fn init() -> Result<()> {
-        let res = Command::new("adb").arg("start-server").status()?;
-        if !res.success() {
-            bail!("Could not start adb server");
-        }
+        run_cmd!("adb", "start-server" => "could not start adb server");
 
         Ok(())
     }
 
     pub fn forward_port(port: u16) -> Result<AdbServerGuard> {
         let port_str = format!("tcp:{}", port);
-        let res = Command::new("adb")
-            .arg("forward")
-            .arg(&port_str)
-            .arg(&port_str)
-            .status()?;
-        if !res.success() {
-            bail!("Could not enable tcp forwarding");
-        }
+        run_cmd!("adb", "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
 
         Ok(AdbServerGuard { port })
     }
@@ -122,18 +108,9 @@ impl AdbServer {
 
 impl Drop for AdbServerGuard {
     fn drop(&mut self) {
-        let res = Command::new("adb")
-            .arg("forward")
-            .arg("--remove")
-            .arg(&format!("tcp:{}", self.port))
-            .status();
-        if let Ok(res) = res {
-            if res.success() {
-                return;
-            }
-        }
-
-        error!("Could not disable tcp forwarding");
+        run_cmd!("adb", "forward", "--remove", &format!("tcp:{}", self.port) => "could not remove adb tcp forwarding", |s| {
+            warn!("could not remove adb tcp forwarding (got {})", s)
+        });
     }
 }
 
@@ -226,6 +203,9 @@ pub struct AudioSupport {
 
 impl AudioSupport {
     pub fn from_pulseaudio() -> Result<AudioSupport> {
+        run_cmd!("pacmd", "--version" => "unable to find 'pacmd' command");
+        run_cmd!("pactl", "--version" => "unable to find 'pactl' command");
+
         let output = get_cmd!("pacmd", "dump" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
         let mut default_sink = String::new();

@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::*;
 use dcam::cli::ProgramOptions;
-use dcam::{AdbServer, Pipeline};
+use dcam::{AdbServer, AudioSupport, Pipeline};
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
@@ -46,7 +46,13 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
 
     gstreamer::init()?;
 
-    let pipeline = Pipeline::new(&options.device, options.resolution, options.port)?;
+    let audio = AudioSupport::from_pulseaudio()?;
+    let pipeline = Pipeline::new(
+        Some(audio),
+        &options.device,
+        options.resolution,
+        options.port,
+    )?;
 
     println!("Press <Enter> to disconnect the webcam.");
     pipeline.run(watch_stdin())?;

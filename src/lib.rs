@@ -87,19 +87,33 @@ impl Drop for AdbServerGuard {
 
 pub struct Pipeline {
     pipeline: gstreamer::Element,
+    _audio: Option<AudioSupport>,
 }
 
 impl Pipeline {
-    pub fn new(device: &Path, resolution: Resolution, port: u16) -> Result<Pipeline> {
+    pub fn new(
+        audio: Option<AudioSupport>,
+        device: &Path,
+        resolution: Resolution,
+        port: u16,
+    ) -> Result<Pipeline> {
         let device = format!("device={}", device.to_string_lossy());
         let caps = format!(
             "video/x-raw,format=YUY2,width={},height={}",
             resolution.width, resolution.height
         );
-        let pipeline = gstreamer::parse_launch(
-            &format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", port, caps, device))?;
+        let mut pipeline_desc = String::new();
+        if audio.is_some() {
+            pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcam_webcam sync=true ", port));
+        }
+        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink {} sync=true", port, caps, device));
 
-        Ok(Pipeline { pipeline })
+        let pipeline = gstreamer::parse_launch(&pipeline_desc)?;
+
+        Ok(Pipeline {
+            pipeline,
+            _audio: audio,
+        })
     }
 
     pub fn run(&self, stop: Receiver<()>) -> Result<()> {
@@ -148,6 +162,148 @@ impl Drop for Pipeline {
         // Shutdown pipeline
         if let Err(e) = self.pipeline.set_state(gstreamer::State::Null) {
             error!("{}", e);
+        }
+    }
+}
+
+pub struct AudioSupport {
+    default_source: String,
+    sink_id: u32,
+    cancel_sink_id: u32,
+}
+
+impl AudioSupport {
+    pub fn from_pulseaudio() -> Result<AudioSupport> {
+        let output = Command::new("pacmd")
+            .arg("dump")
+            .output()
+            .context("failed to dump pactl")?;
+        let out = String::from_utf8_lossy(&output.stdout);
+        let mut default_sink = String::new();
+        let mut default_source = String::new();
+        for l in out.lines() {
+            let mut l = l.split_ascii_whitespace();
+            match l.next() {
+                Some("set-default-sink") => {
+                    if let Some(sink) = l.next() {
+                        default_sink.push_str(sink);
+                    }
+                }
+                Some("set-default-source") => {
+                    if let Some(source) = l.next() {
+                        default_source.push_str(source);
+                    }
+                }
+                _ => {}
+            }
+        }
+        debug!("default_sink={}", default_sink);
+        debug!("default_source={}", default_source);
+
+        let output = Command::new("pactl")
+            .args(&[
+                "load-module",
+                "module-null-sink",
+                "sink_name=dcam_webcam",
+                "format=S16LE rate=44100 channels=1",
+                "sink_properties=\"device.description='DCam Webcam Virtual Microphone'\"",
+            ])
+            .output()
+            .context("failed to load dcam audio module")?;
+
+        let sink_id: u32 = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .context("failed to parse sink_id")?;
+        debug!("sink_id={}", sink_id);
+
+        let output = Command::new("pactl")
+            .args(&[
+                "load-module",
+                "module-echo-cancel",
+                "sink_name=dcam_webcam_echo_cancel",
+                "source_master=dcam_webcam.monitor",
+                &format!("sink_master={}", default_sink),
+                "format=S16LE rate=44100 channels=1",
+                "aec_method=\"webrtc\"",
+                "save_aec=true",
+                "use_volume_sharing=true",
+            ])
+            .output()
+            .context("failed to load echo cancellation module")?;
+
+        let cancel_sink_id: u32 = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .context("failed to parse cancel_sink_id")?;
+        debug!("cancel_sink_id={}", cancel_sink_id);
+
+        let status = Command::new("pactl")
+            .args(&["set-default-source", "dcam_webcam.monitor"])
+            .status()
+            .context("failed to set default source")?;
+        ensure!(
+            status.success(),
+            "failed to set default source, returned {}",
+            status
+        );
+
+        Ok(AudioSupport {
+            default_source,
+            sink_id,
+            cancel_sink_id,
+        })
+    }
+}
+
+impl Drop for AudioSupport {
+    fn drop(&mut self) {
+        match Command::new("pactl")
+            .args(&["set-default-source", &self.default_source])
+            .status()
+            .context("failed to reset default source")
+        {
+            Err(e) => error!("{}", e),
+            Ok(s) => {
+                if !s.success() {
+                    warn!(
+                        "error trying to set default source back to {} (returned {})",
+                        self.default_source, s
+                    );
+                }
+            }
+        }
+
+        match Command::new("pactl")
+            .args(&["unload-module", &self.cancel_sink_id.to_string()])
+            .status()
+            .context("failed to unload echo cancellation module")
+        {
+            Err(e) => error!("{}", e),
+            Ok(s) => {
+                if !s.success() {
+                    warn!(
+                        "error trying to unload echo cancelation module, id={} (returned {})",
+                        self.cancel_sink_id, s
+                    );
+                }
+            }
+        }
+
+        match Command::new("pactl")
+            .args(&["unload-module", &self.sink_id.to_string()])
+            .status()
+            .context("failed to unload dcam audio module")
+        {
+            Err(e) => error!("{}", e),
+            Ok(s) => {
+                if !s.success() {
+                    warn!(
+                        "error trying to unload webcam audio module, id={} (returned {})",
+                        self.cancel_sink_id, s
+                    );
+                }
+            }
         }
     }
 }

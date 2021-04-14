@@ -14,6 +14,8 @@ TODO
 dcamctl is written in Rust, so you need a [Rust install] to build it. dcamctl compiles with
 Rust 1.50 or newer.
 
+Building dcam requires gstreamer 1.0 and its required gtk packages (`libgstreamer1.0-dev` on Ubuntu, `gstreamer1-devel` on Fedora).
+
 Build from source with:
 
 ```sh

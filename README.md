@@ -60,7 +60,7 @@ $ git clone https://github.com/gourlaysama/dcamctl
 $ cd dcamctl
 $ cargo build --release
 $ ./target/release/dcamctl --version
-dcamctl 0.1.0-dev
+dcamctl 0.1.0
 ```
 
 ## Options

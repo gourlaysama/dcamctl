@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+
+## [0.1.0] - 2021-04-14
+
 ### Added
 
 * Initial support for audio and video. Only USB-connected devices are supported.
@@ -14,4 +17,5 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...v0.1.0

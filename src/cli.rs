@@ -7,19 +7,30 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(about = "Use android device as webcam with v4l2loopback")]
 pub struct ProgramOptions {
+    /// Port to forward between the device and localhost.
+    ///
+    /// The port on on the device with this value will be forwarded to the same port on localhost.
     #[structopt(long, short, default_value = "8080")]
     pub port: u16,
 
+    /// v4l2loopback video device to use.
+    ///
+    /// This device must be one expose by the v4l2loopback kernel module. Check the devices under /dev/video* with
+    /// `v4l2-ctl -d /dev/videoX -D` for the correct one.
     #[structopt(long, short, default_value = "/dev/video0")]
     pub device: PathBuf,
 
+    /// Output resolution to use.
+    ///
+    /// The video feed will be resized to this value if needed.
     #[structopt(long, short, default_value = "640x480")]
     pub resolution: Resolution,
 
+    /// Pass for more log output.
     #[structopt(long, short, global = true, parse(from_occurrences))]
     verbose: i8,
 
-    /// Pass many times for less log output
+    /// Pass for less log output.
     #[structopt(
         long,
         short,

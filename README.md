@@ -6,8 +6,45 @@ It uses adb to talk to the device, gstreamer and pulseaudio to handle the audio 
 
 ## Usage
 
-TODO
+dcamctl exposes the audio and video from an android device with [IP Webcam] (connected over USB) as a webcam and a virtual microphone that can be used by applications like Skype, Zoom, etc. and by browser-based solutions.
 
+### Examples
+
+```sh
+$ # stream 720p camera
+$ dcamctl -r '1280x720'
+
+$ # after picking a custom port in IP Webcam, set it here
+$ dcamctl -p 8086
+
+$ # v4l2loopback may have created a video device with a different name,
+$ # for example if there already is a webcam
+$ dcamctl -d /dev/video1
+```
+
+### Requirements
+
+dcamctl requires to run:
+ - the `v4l2loopback` kernel module installed and running,
+ - gstreamer 1.0,
+ - the Android platform tool `adb` ,
+ - pulseaudio and its utility tools `pacmd` and `pactl`.
+
+On a modern Linux distributions, all the above are usually available as packages, except possibly the `v4l2loopback` kernel module. See the link for details.
+
+dcamctl also requires [IP Webcam] and the Android device, and it being set up for debugging over USB (see online, [for example here]).
+
+### How it works
+
+What roughly happens:
+
+1. the video and audio get captured and locally streamed by the IP Webcam app;
+2. they get forwarded to the computer via Android USB debugging;
+3. gstreamer pulls from those local streams, demuxes and decodes them in sync;
+4. gstreamer converts and scales the video, then pushes it to v4l2loopback;
+5. gstreamer converts the audio, then pushes it to pulseaudio;
+6. v4l2loopback just reexposes what it receives as a standard v4l2 video device (a Virtual Webcam);
+7. pulseaudio exposes the audio as a source (a Virtual Microphone), with echo-cancellation.
 
 ## Building from source
 
@@ -29,13 +66,37 @@ dcamctl 0.1.0-dev
 ## Options
 
 ```
-TODO
+-d, --device <device>            
+    v4l2loopback video device to use.
 
--h, --help           
-        Prints help information.
+    This device must be one expose by the v4l2loopback kernel module. Check the devices
+    under /dev/video* with `v4l2-ctl -d /dev/videoX -D` for the correct one.
+    [default: /dev/video0]
 
--V, --version        
-        Prints version information.
+-p, --port <port>                
+    Port to forward between the device and localhost.
+
+    The port on on the device with this value will be forwarded to the same port on
+    localhost. [default: 8080]
+
+-r, --resolution <resolution>    
+    Output resolution to use.
+
+    The video feed will be resized to this value if needed. [default: 640x480]
+
+-h, --help       
+    Prints help information
+
+-q, --quiet      
+    Pass for less log output
+
+-V, --version    
+    Prints version information
+
+-v, --verbose    
+    Pass for more log output
+
+
 ```
 
 #### License
@@ -53,3 +114,5 @@ dual licensed as above, without any additional terms or conditions.
 </sub>
 
 [Rust install]: https://www.rust-lang.org/tools/install
+[IP Webcam]: https://play.google.com/store/apps/details?id=com.pas.webcam
+[for example here]: https://joyofandroid.com/how-to-enable-usb-debugging-on-android/

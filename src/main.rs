@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::*;
 use dcamctl::cli::ProgramOptions;
-use dcamctl::{AdbServer, AudioSupport, Pipeline};
+use dcamctl::{AdbServer, AudioSupport, Pipeline, show};
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
@@ -16,8 +16,11 @@ type ReturnCode = i32;
 fn main() -> Result<()> {
     let options = ProgramOptions::from_args();
 
-    let mut b = Builder::from_env(Env::from("DCAMCTL_LOG"));
+    let mut b = Builder::default();
     b.format_timestamp(None);
+    b.filter_level(LevelFilter::Warn); // default filter lever
+    b.parse_env(Env::from("DCAMCTL_LOG")); // override with env
+    // override with CLI option
     if let Some(level) = options.log_level_with_default(2) {
         b.filter_level(level);
     };
@@ -26,7 +29,7 @@ fn main() -> Result<()> {
     std::process::exit(match run(options) {
         Ok(i) => i,
         Err(e) => {
-            println!("Error: {}", e);
+            show!("Error: {}", e);
             for cause in e.chain().skip(1) {
                 info!("cause: {}", cause);
             }
@@ -54,7 +57,7 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
         options.port,
     )?;
 
-    println!("Press <Enter> to disconnect the webcam.");
+    show!("Press <Enter> to disconnect the webcam.");
     pipeline.run(watch_stdin())?;
 
     Ok(0)

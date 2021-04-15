@@ -107,7 +107,7 @@ impl Pipeline {
             device_str,
             resolution
         );
-        println!("  Video     : {}", device_str);
+        show!(Warn, "  Video     : {}", device_str);
 
         Ok(Pipeline {
             pipeline,
@@ -250,9 +250,9 @@ impl AudioSupport {
 
         info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
         info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
-        println!("Setting temporary defaults:");
-        println!("  Microphone: Webcam Virtual Microphone (EC-cancelled)");
-        println!("  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)");
+        show!(Warn, "Setting temporary defaults:");
+        show!(Warn, "  Microphone: Webcam Virtual Microphone (EC-cancelled)");
+        show!(Warn, "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)");
 
         Ok(AudioSupport {
             default_source,

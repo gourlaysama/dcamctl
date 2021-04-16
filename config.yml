@@ -1,0 +1,5 @@
+# Default configuration
+# (fallback if no configuration file is present)
+port: 8080
+device: "/dev/video0"
+resolution: "640x480"

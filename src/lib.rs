@@ -1,50 +1,17 @@
 use std::{
     path::Path,
-    str::FromStr,
     sync::mpsc::{Receiver, TryRecvError},
 };
 
 use anyhow::*;
+use crate::config::Resolution;
 use gstreamer::prelude::*;
 use log::*;
 
 pub mod cli;
+pub mod config;
 #[macro_use]
 mod macros;
-
-#[derive(Debug)]
-pub struct Resolution {
-    pub height: u16,
-    pub width: u16,
-}
-
-impl FromStr for Resolution {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split('x');
-        let width: u16 = if let Some(left) = parts.next() {
-            left.parse()?
-        } else {
-            bail!("No width found")
-        };
-        let height: u16 = if let Some(right) = parts.next() {
-            right.parse()?
-        } else {
-            bail!("No height found")
-        };
-
-        Ok(Self { height, width })
-    }
-}
-
-impl std::fmt::Display for Resolution {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}x{}", self.width, self.height)?;
-
-        Ok(())
-    }
-}
 
 pub struct AdbServer {}
 
@@ -88,7 +55,6 @@ impl Pipeline {
         resolution: Resolution,
         port: u16,
     ) -> Result<Pipeline> {
-
         let device_str = device.to_string_lossy();
         let caps = format!(
             "video/x-raw,format=YUY2,width={},height={}",
@@ -104,8 +70,7 @@ impl Pipeline {
 
         info!(
             "set up video input '{}' with resolution {}",
-            device_str,
-            resolution
+            device_str, resolution
         );
         show!(Warn, "  Video     : {}", device_str);
 
@@ -251,8 +216,14 @@ impl AudioSupport {
         info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
         info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
         show!(Warn, "Setting temporary defaults:");
-        show!(Warn, "  Microphone: Webcam Virtual Microphone (EC-cancelled)");
-        show!(Warn, "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)");
+        show!(
+            Warn,
+            "  Microphone: Webcam Virtual Microphone (EC-cancelled)"
+        );
+        show!(
+            Warn,
+            "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)"
+        );
 
         Ok(AudioSupport {
             default_source,

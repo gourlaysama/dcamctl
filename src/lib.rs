@@ -3,8 +3,8 @@ use std::{
     sync::mpsc::{Receiver, TryRecvError},
 };
 
-use anyhow::*;
 use crate::config::Resolution;
+use anyhow::*;
 use gstreamer::prelude::*;
 use log::*;
 

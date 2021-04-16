@@ -89,6 +89,12 @@ fn directories() -> Option<ProjectDirs> {
 fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     let mut empty = false;
     let mut conf = config::Config::default();
+    // merge default values as fallback
+    conf.merge(config::File::from_str(
+        DEFAULT_CONFIG,
+        config::FileFormat::Yaml,
+    ))?;
+
     if let Some(path) = &options.config {
         debug!("looking for config file '{}'", path.display());
         conf.merge(config::File::from(path.as_ref()))?;
@@ -105,12 +111,7 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
         }
     };
     if empty {
-        info!("no config file found, using fallback");
-        // fallback config so that first users see something
-        conf.merge(config::File::from_str(
-            DEFAULT_CONFIG,
-            config::FileFormat::Yaml,
-        ))?;
+        info!("no config file found, using default values");
     };
 
     fn set_conf_from_options(
@@ -128,7 +129,7 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     set_conf_from_options(&mut conf, &options.port, "port")?;
     set_conf_from_options(&mut conf, &options.device, "device")?;
     set_conf_from_options(&mut conf, &options.resolution, "resolution")?;
-    
+
     let conf: ProgramConfig = conf.try_into()?;
     trace!("full config: {:#?}", conf);
 

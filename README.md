@@ -2,7 +2,7 @@
 
 **dcamctl** is a command line tool to use an android device connected over USB as a webcam.
 
-It uses adb to talk to the device, gstreamer and pulseaudio to handle the audio and video streams, and v4l2loopback to expose the video to applications as a virtual webcam.
+It uses adb to talk to the device, gstreamer and pulseaudio to handle the audio and video streams, and v4l2loopback to expose the video to applications as a virtual webcam. On the device side, it is compatible with [IP Webcam].
 
 ## Usage
 
@@ -11,26 +11,27 @@ dcamctl exposes the audio and video from an android device with [IP Webcam] (con
 ### Examples
 
 ```sh
-$ # stream 720p camera
-$ dcamctl -r '1280x720'
+# stream 720p camera
+dcamctl -r '1280x720'
 
-$ # after picking a custom port in IP Webcam, set it here
-$ dcamctl -p 8086
+# after picking a custom port in IP Webcam, set it here
+dcamctl -p 8086
 
-$ # v4l2loopback may have created a video device with a different name,
-$ # for example if there already is a webcam
-$ dcamctl -d /dev/video1
+# v4l2loopback may have created a video device with a different name,
+# for example if there already is a webcam
+dcamctl -d /dev/video1
 ```
 
 ### Requirements
 
 dcamctl requires to run:
- - the `v4l2loopback` kernel module installed and running,
- - gstreamer 1.0,
- - the Android platform tool `adb` ,
- - pulseaudio and its utility tools `pacmd` and `pactl`.
 
-On a modern Linux distributions, all the above are usually available as packages, except possibly the `v4l2loopback` kernel module. See the link for details.
+- the `v4l2loopback` kernel module installed and running,
+- gstreamer 1.0,
+- the Android platform tool `adb` ,
+- pulseaudio and its utility tools `pacmd` and `pactl`.
+
+On a modern Linux distributions, all the above are usually available as packages, except possibly the [`v4l2loopback` kernel module][1]. See the link for details.
 
 dcamctl also requires [IP Webcam] and the Android device, and it being set up for debugging over USB (see online, [for example here]).
 
@@ -66,38 +67,38 @@ dcamctl 0.1.0
 ## Options
 
 ```
--d, --device <device>            
+-d, --device <device>
     v4l2loopback video device to use.
 
     This device must be one expose by the v4l2loopback kernel module. Check the devices
     under /dev/video* with `v4l2-ctl -d /dev/videoX -D` for the correct one.
     [default: /dev/video0]
 
--p, --port <port>                
+-p, --port <port>
     Port to forward between the device and localhost.
 
     The port on on the device with this value will be forwarded to the same port on
     localhost. [default: 8080]
 
--r, --resolution <resolution>    
+-r, --resolution <resolution>
     Output resolution to use.
 
     The video feed will be resized to this value if needed. [default: 640x480]
 
--h, --help       
+-h, --help
     Prints help information
 
--q, --quiet      
+-q, --quiet
     Pass for less log output
 
--V, --version    
+-V, --version
     Prints version information
 
--v, --verbose    
+-v, --verbose
     Pass for more log output
-
-
 ```
+
+----
 
 #### License
 
@@ -113,6 +114,7 @@ for inclusion in dcamctl by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 </sub>
 
-[Rust install]: https://www.rust-lang.org/tools/install
-[IP Webcam]: https://play.google.com/store/apps/details?id=com.pas.webcam
+[rust install]: https://www.rust-lang.org/tools/install
+[ip webcam]: https://play.google.com/store/apps/details?id=com.pas.webcam
 [for example here]: https://joyofandroid.com/how-to-enable-usb-debugging-on-android/
+[1]: https://github.com/umlaeute/v4l2loopback

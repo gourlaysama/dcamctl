@@ -33,7 +33,7 @@ dcamctl requires to run:
 
 On a modern Linux distributions, all the above are usually available as packages, except possibly the [`v4l2loopback` kernel module][1]. See the link for details.
 
-dcamctl also requires [IP Webcam] and the Android device, and it being set up for debugging over USB (see online, [for example here]).
+dcamctl also requires [IP Webcam] on the Android device, and it being set up for debugging over USB (see online, [for example here]).
 
 ### How it works
 

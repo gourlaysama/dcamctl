@@ -78,6 +78,12 @@ dcamctl 0.1.0
 ## Options
 
 ```
+--config <config>
+    Use the given configuration file instead of the default.
+
+    By default, dcamctl looks for a configuration file in
+    "$XDG_CONFIG_HOME/dcamctl/config.yml" or "$HOME/.config/dcamctl/config.yml".
+
 -d, --device <device>
     v4l2loopback video device to use.
 
@@ -109,7 +115,17 @@ dcamctl 0.1.0
     Pass for more log output
 ```
 
-----
+## Configuration
+
+dcamctl doesn't create a configuration file for you, but looks for it in in `$XDG_CONFIG_HOME/dcamctl/config.yml` or `$HOME/.config/dcamctl/config.yml`. See the default configuration file at [`config.yml`](config.yml) for an example.
+
+### Configuration keys
+
+- `port` (number): the port to forward between the device and localhost (can be overriden on the command-line with `-p/--port`).
+- `device` (string): the v4l2loopback video device to use (can be overriden on the command-line with `-d/--device`).
+- `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`).
+
+---
 
 #### License
 

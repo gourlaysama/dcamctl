@@ -2,9 +2,11 @@ on:
   push:
     branches:
       - main
+      - 0.1.x
   pull_request:
     branches:
       - main
+      - 0.1.x
 
 name: Continuous integration
 

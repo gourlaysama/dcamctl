@@ -4,6 +4,17 @@
 
 It uses adb to talk to the device, gstreamer and pulseaudio to handle the audio and video streams, and v4l2loopback to expose the video to applications as a virtual webcam. On the device side, it is compatible with [IP Webcam].
 
+## Installation
+
+If you are a **Fedora** (32+) user, you can install dcamctl with:
+
+```sh
+sudo dnf copr enable gourlaysama/dcamctl
+sudo dnf install dcamctl
+```
+
+Otherwise you will need to [build from source](#building-from-source).
+
 ## Usage
 
 dcamctl exposes the audio and video from an android device with [IP Webcam] (connected over USB) as a webcam and a virtual microphone that can be used by applications like Skype, Zoom, etc. and by browser-based solutions.

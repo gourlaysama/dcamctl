@@ -5,13 +5,16 @@ use std::{
 };
 
 use anyhow::*;
-use dcamctl::cli::ProgramOptions;
-use dcamctl::{AdbServer, AudioSupport, Pipeline, show};
+use dcamctl::{cli::ProgramOptions, config::*};
+use dcamctl::{show, AdbServer, AudioSupport, Pipeline};
+use directories_next::ProjectDirs;
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
 
 type ReturnCode = i32;
+
+static DEFAULT_CONFIG: &str = include_str!("../config.yml");
 
 fn main() -> Result<()> {
     let options = ProgramOptions::from_args();
@@ -20,7 +23,7 @@ fn main() -> Result<()> {
     b.format_timestamp(None);
     b.filter_level(LevelFilter::Warn); // default filter lever
     b.parse_env(Env::from("DCAMCTL_LOG")); // override with env
-    // override with CLI option
+                                           // override with CLI option
     if let Some(level) = options.log_level_with_default(2) {
         b.filter_level(level);
     };
@@ -39,23 +42,20 @@ fn main() -> Result<()> {
 }
 
 fn run(options: ProgramOptions) -> Result<ReturnCode> {
+    let conf = make_config(options)?;
+
     check_kernel_module()?;
 
     // start adb-server if not already started
     AdbServer::init()?;
 
     // add forwarding rule
-    let _guard = AdbServer::forward_port(options.port)?;
+    let _guard = AdbServer::forward_port(conf.port)?;
 
     gstreamer::init()?;
 
     let audio = AudioSupport::from_pulseaudio()?;
-    let pipeline = Pipeline::new(
-        Some(audio),
-        &options.device,
-        options.resolution,
-        options.port,
-    )?;
+    let pipeline = Pipeline::new(Some(audio), &conf.device, conf.resolution, conf.port)?;
 
     show!("Press <Enter> to disconnect the webcam.");
     pipeline.run(watch_stdin())?;
@@ -80,4 +80,58 @@ fn check_kernel_module() -> Result<()> {
         bail!("Kernel module v4l2looback isn't loaded");
     }
     Ok(())
+}
+
+fn directories() -> Option<ProjectDirs> {
+    ProjectDirs::from("rs", "", "Dcamctl")
+}
+
+fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
+    let mut empty = false;
+    let mut conf = config::Config::default();
+    // merge default values as fallback
+    conf.merge(config::File::from_str(
+        DEFAULT_CONFIG,
+        config::FileFormat::Yaml,
+    ))?;
+
+    if let Some(path) = &options.config {
+        debug!("looking for config file '{}'", path.display());
+        conf.merge(config::File::from(path.as_ref()))?;
+        info!("using config from '{}'", path.canonicalize()?.display());
+    } else if let Some(p) = directories() {
+        let f = p.config_dir().join("config.yml");
+        debug!("looking for config file '{}'", f.display());
+
+        if f.exists() {
+            info!("using config from '{}'", f.canonicalize()?.display());
+            conf.merge(config::File::from(f))?;
+        } else {
+            empty = true;
+        }
+    };
+    if empty {
+        info!("no config file found, using default values");
+    };
+
+    fn set_conf_from_options(
+        conf: &mut config::Config,
+        option: &Option<String>,
+        key: &str,
+    ) -> Result<()> {
+        if let Some(value) = option {
+            conf.set(key, Some(value.as_str()))?;
+        }
+
+        Ok(())
+    }
+
+    set_conf_from_options(&mut conf, &options.port, "port")?;
+    set_conf_from_options(&mut conf, &options.device, "device")?;
+    set_conf_from_options(&mut conf, &options.resolution, "resolution")?;
+
+    let conf: ProgramConfig = conf.try_into()?;
+    trace!("full config: {:#?}", conf);
+
+    Ok(conf)
 }

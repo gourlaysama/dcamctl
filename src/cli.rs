@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use crate::Resolution;
 use log::LevelFilter;
 use structopt::StructOpt;
 
@@ -10,21 +9,31 @@ pub struct ProgramOptions {
     /// Port to forward between the device and localhost.
     ///
     /// The port on on the device with this value will be forwarded to the same port on localhost.
-    #[structopt(long, short, default_value = "8080")]
-    pub port: u16,
+    /// [default: 8080]
+    #[structopt(long, short)]
+    pub port: Option<String>,
 
     /// v4l2loopback video device to use.
     ///
     /// This device must be one expose by the v4l2loopback kernel module. Check the devices under /dev/video* with
     /// `v4l2-ctl -d /dev/videoX -D` for the correct one.
-    #[structopt(long, short, default_value = "/dev/video0")]
-    pub device: PathBuf,
+    /// [default: /dev/video0]
+    #[structopt(long, short)]
+    pub device: Option<String>,
 
     /// Output resolution to use.
     ///
     /// The video feed will be resized to this value if needed.
-    #[structopt(long, short, default_value = "640x480")]
-    pub resolution: Resolution,
+    /// [default: 640x480]
+    #[structopt(long, short)]
+    pub resolution: Option<String>,
+
+    /// Use the given configuration file instead of the default.
+    ///
+    /// By default, dcamctl looks for a configuration file in "$XDG_CONFIG_HOME/dcamctl/config.yml"
+    /// or "$HOME/.config/dcamctl/config.yml".
+    #[structopt(long)]
+    pub config: Option<PathBuf>,
 
     /// Pass for more log output.
     #[structopt(long, short, global = true, parse(from_occurrences))]

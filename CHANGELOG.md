@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+
+## [0.1.1] - 2021-04-23
+
 ### Added
 
 * Support for a configuration file at `$XDG_CONFIG_HOME/dcamctl/config.yml` to set the device, port and resolution, with a `--config` option to override its location.
@@ -20,5 +23,6 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/gourlaysama/dcamctl/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...v0.1.0

@@ -11,7 +11,7 @@ pub struct ProgramOptions {
     /// The port on on the device with this value will be forwarded to the same port on localhost.
     /// [default: 8080]
     #[structopt(long, short)]
-    pub port: Option<String>,
+    pub port: Option<u16>,
 
     /// v4l2loopback video device to use.
     ///

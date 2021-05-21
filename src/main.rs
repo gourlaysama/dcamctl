@@ -126,7 +126,7 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
         Ok(())
     }
 
-    set_conf_from_options(&mut conf, &options.port, "port")?;
+    set_conf_from_options(&mut conf, &options.port.map(|p| p.to_string()), "port")?;
     set_conf_from_options(&mut conf, &options.device, "device")?;
     set_conf_from_options(&mut conf, &options.resolution, "resolution")?;
 

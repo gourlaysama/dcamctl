@@ -137,24 +137,42 @@ impl Drop for Pipeline {
     }
 }
 
+#[derive(Debug)]
 pub struct AudioSupport {
     default_source: String,
     default_sink: String,
     sink_id: u32,
-    cancel_sink_id: u32,
+    backend: AudioBackend,
+}
+
+#[derive(Debug)]
+enum AudioBackend {
+    Pulseaudio { cancel_sink_id: u32 },
+    PipeWirePulse,
+    // TODO: PipeWireNative
 }
 
 impl AudioSupport {
-    pub fn from_pulseaudio() -> Result<AudioSupport> {
+    pub fn new() -> Result<Option<AudioSupport>> {
         run_cmd!("pactl", "--version" => "unable to find 'pactl' command");
 
         let output = get_cmd!("pactl", "info" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
         let mut default_sink = String::new();
         let mut default_source = String::new();
+        let mut backend = None;
         for l in out.lines() {
             let mut l = l.split(": ");
             match l.next() {
+                Some("Server Name") => {
+                    if let Some(name) = l.next() {
+                        if name.contains("PipeWire") {
+                            backend = Some(AudioBackend::PipeWirePulse);
+                        } else {
+                            backend = Some(AudioBackend::Pulseaudio { cancel_sink_id: 0 })
+                        }
+                    }
+                }
                 Some("Default Sink") => {
                     if let Some(sink) = l.next() {
                         default_sink.push_str(sink);
@@ -168,9 +186,30 @@ impl AudioSupport {
                 _ => {}
             }
         }
+
         trace!("default_sink = {}", default_sink);
         trace!("default_source = {}", default_source);
+        trace!("backend = {:?}", backend);
 
+        let backend = if let Some(backend) = backend {
+            backend
+        } else {
+            return Ok(None);
+        };
+
+        let mut audio_support = AudioSupport {
+            default_sink,
+            default_source,
+            sink_id: 0,
+            backend,
+        };
+
+        audio_support.setup()?;
+
+        Ok(Some(audio_support))
+    }
+
+    fn setup(&mut self) -> Result<()> {
         let output = get_cmd!(
             "pactl",
             "load-module",
@@ -180,56 +219,43 @@ impl AudioSupport {
             "sink_properties=\"device.description='dcamctl (raw)'\""
              => "failed to load dcamctl audio module");
 
-        let sink_id: u32 = String::from_utf8_lossy(&output.stdout)
+        self.sink_id = String::from_utf8_lossy(&output.stdout)
             .trim()
             .parse()
             .context("failed to parse sink_id")?;
-        trace!("sink_id = {}", sink_id);
+        trace!("sink_id = {}", self.sink_id);
 
-        let output = get_cmd!(
-            "pactl",
-            "load-module",
-            "module-echo-cancel",
-            "source_master=dcamctl_webcam.monitor",
-            "source_name=dcamctl_webcam_ec_src",
-            "source_properties=\"device.description='Webcam Virtual Microphone (EC-cancelled)'\"",
-            &format!("sink_master={}", default_sink),
-            "sink_name=dcamctl_webcam_ec_aout",
-            "sink_properties=\"device.description='Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'\"",
-            "format=S16LE rate=44100 channels=1",
-            "aec_method=\"webrtc\"",
-            "save_aec=true",
-            "use_volume_sharing=true"
-            => "failed to load echo cancellation module"
-        );
+        self.backend.setup(&self.default_sink)?;
 
-        let cancel_sink_id: u32 = String::from_utf8_lossy(&output.stdout)
-            .trim()
-            .parse()
-            .context("failed to parse cancel_sink_id")?;
-        trace!("cancel_sink_id={}", cancel_sink_id);
+        match self.backend {
+            AudioBackend::Pulseaudio { .. } => {
+                run_cmd!("pactl", "set-default-source", "dcamctl_webcam_ec_src" => "failed to set dcamctl as default source");
+                run_cmd!("pactl", "set-default-sink", "dcamctl_webcam_ec_aout" => "failed to set dcamctl as default sink");
 
-        run_cmd!("pactl", "set-default-source", "dcamctl_webcam_ec_src" => "failed to set dcamctl as default source");
-        run_cmd!("pactl", "set-default-sink", "dcamctl_webcam_ec_aout" => "failed to set dcamctl as default sink");
+                info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
+                info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
 
-        info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
-        info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
-        show!(Warn, "Setting temporary defaults:");
-        show!(
-            Warn,
-            "  Microphone: Webcam Virtual Microphone (EC-cancelled)"
-        );
-        show!(
-            Warn,
-            "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)"
-        );
+                show!(Warn, "Setting temporary defaults:");
+                show!(
+                    Warn,
+                    "  Microphone: Webcam Virtual Microphone (EC-cancelled)"
+                );
+                show!(
+                    Warn,
+                    "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)"
+                );
+            }
+            AudioBackend::PipeWirePulse => {
+                run_cmd!("pactl", "set-default-source", "dcamctl_webcam.monitor" => "failed to set dcamctl as default source");
 
-        Ok(AudioSupport {
-            default_source,
-            default_sink,
-            sink_id,
-            cancel_sink_id,
-        })
+                info!("set up default audio input 'Webcam Virtual Microphone'");
+
+                show!(Warn, "Setting temporary defaults:");
+                show!(Warn, "  Microphone: Webcam Virtual Microphone");
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -251,14 +277,6 @@ impl Drop for AudioSupport {
             )
         );
 
-        run_cmd!("pactl", "unload-module", &self.cancel_sink_id.to_string() =>
-            "failed to unload echo cancellation module",
-            |s| warn!(
-                "error trying to unload echo cancelation module, id={} (returned {})",
-                self.cancel_sink_id, s
-            )
-        );
-
         run_cmd!("pactl", "unload-module", &self.sink_id.to_string() =>
             "failed to unload dcamctl audio module",
             |s| warn!(
@@ -266,5 +284,57 @@ impl Drop for AudioSupport {
                 self.sink_id, s
             )
         );
+    }
+}
+
+impl AudioBackend {
+    fn setup(&mut self, default_sink: &str) -> Result<()> {
+        match self {
+            AudioBackend::Pulseaudio { cancel_sink_id } => {
+                let output = get_cmd!(
+                    "pactl",
+                    "load-module",
+                    "module-echo-cancel",
+                    "source_master=dcamctl_webcam.monitor",
+                    "source_name=dcamctl_webcam_ec_src",
+                    "source_properties=\"device.description='Webcam Virtual Microphone (EC-cancelled)'\"",
+                    &format!("sink_master={}", default_sink),
+                    "sink_name=dcamctl_webcam_ec_aout",
+                    "sink_properties=\"device.description='Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'\"",
+                    "format=S16LE rate=44100 channels=1",
+                    "aec_method=\"webrtc\"",
+                    "save_aec=true",
+                    "use_volume_sharing=true"
+                    => "failed to load echo cancellation module"
+                );
+
+                let new_cancel_sink_id: u32 = String::from_utf8_lossy(&output.stdout)
+                    .trim()
+                    .parse()
+                    .context("failed to parse cancel_sink_id")?;
+                trace!("cancel_sink_id={}", new_cancel_sink_id);
+                *cancel_sink_id = new_cancel_sink_id;
+            }
+            AudioBackend::PipeWirePulse => {}
+        };
+
+        Ok(())
+    }
+}
+
+impl Drop for AudioBackend {
+    fn drop(&mut self) {
+        match self {
+            AudioBackend::Pulseaudio { cancel_sink_id } => {
+                run_cmd!("pactl", "unload-module", &cancel_sink_id.to_string() =>
+                    "failed to unload echo cancellation module",
+                    |s| warn!(
+                        "error trying to unload echo cancelation module, id={} (returned {})",
+                        cancel_sink_id, s
+                    )
+                );
+            }
+            AudioBackend::PipeWirePulse => {}
+        }
     }
 }

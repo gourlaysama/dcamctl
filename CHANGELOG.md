@@ -9,6 +9,10 @@
 
 * Removed dependency on the pulseaudio `pacmd` cli tool.
 
+### Added
+
+* Support for PipeWire, using its pulseaudio interface. Echo-cancellation is disabled when using PipeWire, since it doesn't support it yet.
+
 ## [0.1.1] - 2021-04-23
 
 ### Added

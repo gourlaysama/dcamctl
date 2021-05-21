@@ -54,8 +54,8 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
 
     gstreamer::init()?;
 
-    let audio = AudioSupport::from_pulseaudio()?;
-    let pipeline = Pipeline::new(Some(audio), &conf.device, conf.resolution, conf.port)?;
+    let audio = AudioSupport::new()?;
+    let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
 
     show!("Press <Enter> to disconnect the webcam.");
     pipeline.run(watch_stdin())?;

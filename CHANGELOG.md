@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Packaging
+
+* Removed dependency on the pulseaudio `pacmd` cli tool.
 
 ## [0.1.1] - 2021-04-23
 

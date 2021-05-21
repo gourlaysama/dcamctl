@@ -146,22 +146,21 @@ pub struct AudioSupport {
 
 impl AudioSupport {
     pub fn from_pulseaudio() -> Result<AudioSupport> {
-        run_cmd!("pacmd", "--version" => "unable to find 'pacmd' command");
         run_cmd!("pactl", "--version" => "unable to find 'pactl' command");
 
-        let output = get_cmd!("pacmd", "dump" => "failed to get pulseaudio info");
+        let output = get_cmd!("pactl", "info" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
         let mut default_sink = String::new();
         let mut default_source = String::new();
         for l in out.lines() {
-            let mut l = l.split_ascii_whitespace();
+            let mut l = l.split(": ");
             match l.next() {
-                Some("set-default-sink") => {
+                Some("Default Sink") => {
                     if let Some(sink) = l.next() {
                         default_sink.push_str(sink);
                     }
                 }
-                Some("set-default-source") => {
+                Some("Default Source") => {
                     if let Some(source) = l.next() {
                         default_source.push_str(source);
                     }

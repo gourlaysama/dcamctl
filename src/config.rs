@@ -9,6 +9,7 @@ pub struct ProgramConfig {
     pub device: PathBuf,
     #[serde(with = "resolution")]
     pub resolution: Resolution,
+    pub no_audio: bool,
 }
 
 #[derive(Debug, Deserialize)]

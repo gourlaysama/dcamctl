@@ -35,6 +35,12 @@ pub struct ProgramOptions {
     #[structopt(long)]
     pub config: Option<PathBuf>,
 
+    /// Disable audio support.
+    ///
+    /// Do not setup audio forwarding or interact at all with the audio system.
+    #[structopt(long, short)]
+    pub no_audio: bool,
+
     /// Pass for more log output.
     #[structopt(long, short, global = true, parse(from_occurrences))]
     verbose: i8,

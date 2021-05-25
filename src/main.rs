@@ -54,7 +54,11 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
 
     gstreamer::init()?;
 
-    let audio = AudioSupport::new()?;
+    let audio = if conf.no_audio {
+        None
+    } else {
+        AudioSupport::new()?
+    };
     let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
 
     show!("Press <Enter> to disconnect the webcam.");
@@ -129,6 +133,9 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     set_conf_from_options(&mut conf, &options.port.map(|p| p.to_string()), "port")?;
     set_conf_from_options(&mut conf, &options.device, "device")?;
     set_conf_from_options(&mut conf, &options.resolution, "resolution")?;
+    if options.no_audio {
+        conf.set("no_audio", Some(true))?;
+    }
 
     let conf: ProgramConfig = conf.try_into()?;
     trace!("full config: {:#?}", conf);

@@ -1,7 +1,6 @@
 use std::{
     path::Path,
     sync::mpsc::{self, Receiver},
-    thread,
 };
 
 use anyhow::*;
@@ -61,21 +60,19 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
     };
     let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
 
-    show!("Press <Enter> to disconnect the webcam.");
-    pipeline.run(watch_stdin())?;
+    show!("Press <Ctrl-C> to disconnect the webcam.");
+    pipeline.run(watch_quit()?)?;
+    show!("\nDisconnected.");
 
     Ok(0)
 }
 
-fn watch_stdin() -> Receiver<()> {
+fn watch_quit() -> Result<Receiver<()>> {
     let (tx, rx) = mpsc::channel::<()>();
-    thread::spawn(move || loop {
-        // ignore line content
-        let mut buffer = String::new();
-        std::io::stdin().read_line(&mut buffer).unwrap();
+    ctrlc::set_handler(move || {
         tx.send(()).unwrap();
-    });
-    rx
+    })?;
+    Ok(rx)
 }
 
 fn check_kernel_module() -> Result<()> {

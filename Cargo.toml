@@ -10,6 +10,7 @@ log = '0.4'
 env_logger = '0.8'
 gstreamer = "0.16"
 directories-next = '2'
+ctrlc = { version = "3", features = ["termination"] }
 
 [dependencies.config]
 version = '0.11'

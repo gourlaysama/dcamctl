@@ -25,3 +25,6 @@ features = ['derive']
 version = '0.3'
 default-features = false
 features = ['suggestions']
+
+[profile.release]
+lto = true

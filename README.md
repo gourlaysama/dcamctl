@@ -102,6 +102,11 @@ dcamctl 0.2.0
 
     The video feed will be resized to this value if needed. [default: 640x480]
 
+-n, --no-audio
+    Disable audio support.
+
+    Do not setup audio forwarding or interact at all with the audio system.
+
 -h, --help
     Prints help information
 
@@ -124,6 +129,7 @@ dcamctl doesn't create a configuration file for you, but looks for it in in `$XD
 - `port` (number): the port to forward between the device and localhost (can be overriden on the command-line with `-p/--port`).
 - `device` (string): the v4l2loopback video device to use (can be overriden on the command-line with `-d/--device`).
 - `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`).
+- `no_audio` (boolean): if true, disable audio support (can be overriden on the command-line with `-n/--no-audio`).
 
 ---
 

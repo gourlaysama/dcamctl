@@ -14,6 +14,14 @@
 * Support for PipeWire, using its pulseaudio interface. Echo-cancellation is disabled when using PipeWire, since it doesn't support it yet.
 * New `--no-audio/-n` option to disable audio setup.
 
+### Changed
+
+* Closing dcamctl is now done with `<Ctrl-C>` instead of `<Enter>`.
+
+### Fixed
+
+* Killing the process used to leave things in a inconsistent state. It now cleans things up properly when sent `SIGINT` or `SIGTERM`.
+
 ## [0.1.1] - 2021-04-23
 
 ### Added

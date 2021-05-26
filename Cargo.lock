@@ -92,7 +92,7 @@ dependencies = [
 
 [[package]]
 name = "dcamctl"
-version = "0.2.0-dev"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "config",

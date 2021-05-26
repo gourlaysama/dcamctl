@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+
+## [0.2.0] - 2021-05-26
+
 ### Packaging
 
 * Removed dependency on the pulseaudio `pacmd` cli tool.
@@ -39,6 +42,7 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gourlaysama/dcamctl/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/gourlaysama/dcamctl/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...v0.1.0

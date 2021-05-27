@@ -1,10 +1,8 @@
-use std::{
-    path::Path,
-    sync::mpsc::{Receiver, TryRecvError},
-};
+use std::path::Path;
 
 use crate::config::Resolution;
 use anyhow::*;
+use futures::{Future, FutureExt, StreamExt};
 use gstreamer::prelude::*;
 use log::*;
 use regex::Regex;
@@ -81,7 +79,7 @@ impl Pipeline {
         })
     }
 
-    pub fn run(&self, stop: Receiver<()>) -> Result<()> {
+    pub async fn run(&self, stop: impl Future<Output = Result<()>>) -> Result<()> {
         self.pipeline.set_state(gstreamer::State::Playing)?;
         debug!("running pipeline");
 
@@ -89,36 +87,34 @@ impl Pipeline {
             Some(b) => b,
             None => bail!("No bus for gstreamer pipeline"),
         };
-        loop {
-            let msg = bus.timed_pop(100 * gstreamer::MSECOND);
-            if let Some(msg) = msg {
-                use gstreamer::MessageView;
-
-                match msg.view() {
-                    MessageView::Eos(..) => {
-                        warn!("received end-of-stream, quitting");
-                        break;
-                    }
-                    MessageView::Error(err) => {
-                        error!(
-                            "Error from {:?}: {} ({:?})",
-                            err.get_src().map(|s| s.get_path_string()),
-                            err.get_error(),
-                            err.get_debug()
-                        );
-                        break;
-                    }
-                    _ => {}
+        let stop = stop
+            .map(|r| {
+                if let Err(e) = r {
+                    error!("{}", e);
                 }
-            }
+                debug!("Received quit command; quitting");
+            })
+            .boxed_local();
+        let mut stream = bus.stream().take_until(stop);
 
-            match stop.try_recv() {
-                Ok(_) => {
-                    debug!("Received quit command; quitting");
+        while let Some(msg) = stream.next().await {
+            use gstreamer::MessageView;
+
+            match msg.view() {
+                MessageView::Eos(..) => {
+                    warn!("received end-of-stream, quitting");
                     break;
                 }
-                Err(TryRecvError::Empty) => {}
-                Err(a) => return Err(anyhow!("Internal threading error").context(a)),
+                MessageView::Error(err) => {
+                    error!(
+                        "Error from {:?}: {} ({:?})",
+                        err.get_src().map(|s| s.get_path_string()),
+                        err.get_error(),
+                        err.get_debug()
+                    );
+                    break;
+                }
+                _ => {}
             }
         }
 

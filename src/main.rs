@@ -1,7 +1,5 @@
-use std::{
-    path::Path,
-    sync::mpsc::{self, Receiver},
-};
+use std::path::Path;
+use std::sync::mpsc;
 
 use anyhow::*;
 use dcamctl::{cli::ProgramOptions, config::*};
@@ -10,6 +8,7 @@ use directories_next::ProjectDirs;
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
+use tokio::runtime;
 
 type ReturnCode = i32;
 
@@ -28,7 +27,9 @@ fn main() -> Result<()> {
     };
     b.try_init()?;
 
-    std::process::exit(match run(options) {
+    let rt = runtime::Builder::new_multi_thread().enable_all().build()?;
+
+    std::process::exit(match rt.block_on(run(options)) {
         Ok(i) => i,
         Err(e) => {
             show!("Error: {}", e);
@@ -40,7 +41,7 @@ fn main() -> Result<()> {
     })
 }
 
-fn run(options: ProgramOptions) -> Result<ReturnCode> {
+async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     let conf = make_config(options)?;
 
     check_kernel_module()?;
@@ -61,18 +62,24 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
     let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
 
     show!("Press <Ctrl-C> to disconnect the webcam.");
-    pipeline.run(watch_quit()?)?;
+    pipeline.run(watch_quit()).await?;
+
     show!("\nDisconnected.");
 
     Ok(0)
 }
 
-fn watch_quit() -> Result<Receiver<()>> {
+async fn watch_quit() -> Result<()> {
     let (tx, rx) = mpsc::channel::<()>();
     ctrlc::set_handler(move || {
         tx.send(()).unwrap();
     })?;
-    Ok(rx)
+
+    tokio::task::spawn_blocking(move || {
+        rx.recv()
+            .map_err(|e| anyhow!("Internal threading error").context(e))
+    })
+    .await?
 }
 
 fn check_kernel_module() -> Result<()> {

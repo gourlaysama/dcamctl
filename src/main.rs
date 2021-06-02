@@ -1,9 +1,8 @@
 use std::path::Path;
-use std::sync::mpsc;
 
 use anyhow::*;
 use dcamctl::{cli::ProgramOptions, config::*};
-use dcamctl::{show, AdbServer, AudioSupport, Pipeline};
+use dcamctl::{show, AdbServer, AudioSupport, Dcam};
 use directories_next::ProjectDirs;
 use env_logger::{Builder, Env};
 use log::*;
@@ -19,6 +18,7 @@ fn main() -> Result<()> {
 
     let mut b = Builder::default();
     b.format_timestamp(None);
+    b.format_suffix("\r\n");
     b.filter_level(LevelFilter::Warn); // default filter lever
     b.parse_env(Env::from("DCAMCTL_LOG")); // override with env
                                            // override with CLI option
@@ -46,11 +46,8 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
 
     check_kernel_module()?;
 
-    // start adb-server if not already started
     AdbServer::init()?;
-
-    // add forwarding rule
-    let _guard = AdbServer::forward_port(conf.port)?;
+    let _server = AdbServer::connect(conf.port)?;
 
     gstreamer::init()?;
 
@@ -59,27 +56,11 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     } else {
         AudioSupport::new()?
     };
-    let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
+    let mut pipeline = Dcam::new(audio, &conf.device, conf.resolution, conf.port)?;
 
-    show!("Press <Ctrl-C> to disconnect the webcam.");
-    pipeline.run(watch_quit()).await?;
-
-    show!("\nDisconnected.");
+    pipeline.run().await?;
 
     Ok(0)
-}
-
-async fn watch_quit() -> Result<()> {
-    let (tx, rx) = mpsc::channel::<()>();
-    ctrlc::set_handler(move || {
-        tx.send(()).unwrap();
-    })?;
-
-    tokio::task::spawn_blocking(move || {
-        rx.recv()
-            .map_err(|e| anyhow!("Internal threading error").context(e))
-    })
-    .await?
 }
 
 fn check_kernel_module() -> Result<()> {

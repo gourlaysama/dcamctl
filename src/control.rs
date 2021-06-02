@@ -1,3 +1,5 @@
+use std::io::{Stdout, Write};
+
 use crate::cam_info::CamInfo;
 use anyhow::*;
 use futures::{FutureExt, Stream, StreamExt};
@@ -17,6 +19,7 @@ struct CamControl {
     quit: Sender<()>,
     port: u16,
     cam_info: CamInfo,
+    stdout: Stdout
 }
 
 impl CamControl {
@@ -27,6 +30,7 @@ impl CamControl {
             quit,
             port,
             cam_info,
+            stdout: std::io::stdout()
         })
     }
 
@@ -34,6 +38,18 @@ impl CamControl {
         let new = get_cam_info(self.port, false).await?;
 
         self.cam_info.curvals = new.curvals;
+
+        Ok(())
+    }
+
+    fn display_status(&mut self) -> Result<()> {
+        if let Some((zoom_idx, zoom_end)) = self.zoom_index() {
+            let p = (100 * zoom_idx) / zoom_end;
+            if log_enabled!(log::Level::Error) {
+                write!(self.stdout, "Zoom: {:2} %\r", p)?;
+                self.stdout.flush()?;
+            }
+        }
 
         Ok(())
     }
@@ -114,6 +130,8 @@ pub async fn process_commands(port: u16) -> Result<()> {
 async fn process_commands_inner(control: CamControl) -> Result<()> {
     let mut cmds = input_commands().boxed();
     let mut control = control;
+
+    control.display_status()?;
     while let Some(cmd) = cmds.next().await {
         match cmd {
             Command::Quit => {
@@ -143,6 +161,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
         }
 
         control.refresh().await?;
+        control.display_status()?;
     }
 
     Ok(())

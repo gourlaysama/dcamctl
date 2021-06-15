@@ -68,11 +68,11 @@ Building dcam requires gstreamer 1.0 and its required gtk packages (`libgstreame
 Build from source with:
 
 ```sh
-$ git clone https://github.com/gourlaysama/dcamctl -b v0.2.0
+$ git clone https://github.com/gourlaysama/dcamctl -b v0.2.1
 $ cd dcamctl
 $ cargo build --release
 $ ./target/release/dcamctl --version
-dcamctl 0.2.0
+dcamctl 0.2.1
 ```
 
 ## Options

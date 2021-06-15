@@ -40,7 +40,7 @@ dcamctl requires to run:
 - the `v4l2loopback` kernel module installed and running,
 - gstreamer 1.0,
 - the Android platform tool `adb` ,
-- pulseaudio and its utility tools `pacmd` and `pactl`.
+- pulseaudio and its utility tool `pactl` (PipeWire's pulseaudio compatibility layer is also supported).
 
 On a modern Linux distributions, all the above are usually available as packages, except possibly the [`v4l2loopback` kernel module][1]. See the link for details.
 

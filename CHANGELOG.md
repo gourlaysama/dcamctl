@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Added
+
+* Support for echo-cancellation on PipeWire 0.3.30+.
 
 ## [0.2.0] - 2021-05-26
 

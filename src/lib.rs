@@ -7,6 +7,7 @@ use crate::config::Resolution;
 use anyhow::*;
 use gstreamer::prelude::*;
 use log::*;
+use regex::Regex;
 
 pub mod cli;
 pub mod config;
@@ -142,13 +143,13 @@ pub struct AudioSupport {
     default_source: String,
     default_sink: String,
     sink_id: u32,
-    backend: AudioBackend,
+    echo_cancel: EchoCancel,
 }
 
 #[derive(Debug)]
-enum AudioBackend {
+enum EchoCancel {
     Pulseaudio { cancel_sink_id: u32 },
-    PipeWirePulse,
+    Disabled,
     // TODO: PipeWireNative
 }
 
@@ -158,19 +159,40 @@ impl AudioSupport {
 
         let output = get_cmd!("pactl", "info" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
+
+        let re = Regex::new(r"PipeWire ([^\s\)]+)?").unwrap();
         let mut default_sink = String::new();
         let mut default_source = String::new();
-        let mut backend = None;
+        let mut echo_cancel = None;
         for l in out.lines() {
             let mut l = l.split(": ");
             match l.next() {
                 Some("Server Name") => {
                     if let Some(name) = l.next() {
-                        if name.contains("PipeWire") {
-                            backend = Some(AudioBackend::PipeWirePulse);
-                        } else {
-                            backend = Some(AudioBackend::Pulseaudio { cancel_sink_id: 0 })
+                        if let Some(c) = re.captures(name) {
+                            if let Ok(v) = lenient_semver::parse(&c[1]) {
+                                debug!("using pipewire backend");
+                                let acancel_version = lenient_semver::parse("0.3.30")?;
+                                if v < acancel_version {
+                                    debug!(
+                                        "pirewire {} < {}: disabling audio cancellation",
+                                        v, acancel_version
+                                    );
+                                    echo_cancel = Some(EchoCancel::Disabled);
+                                } else {
+                                    debug!(
+                                        "pirewire {} >= {}: enabling audio cancellation",
+                                        v, acancel_version
+                                    );
+                                    echo_cancel =
+                                        Some(EchoCancel::Pulseaudio { cancel_sink_id: 0 });
+                                }
+                                continue;
+                            }
                         }
+
+                        debug!("using pulseaudio backend");
+                        echo_cancel = Some(EchoCancel::Pulseaudio { cancel_sink_id: 0 });
                     }
                 }
                 Some("Default Sink") => {
@@ -189,9 +211,9 @@ impl AudioSupport {
 
         trace!("default_sink = {}", default_sink);
         trace!("default_source = {}", default_source);
-        trace!("backend = {:?}", backend);
+        trace!("echo_cancel = {:?}", echo_cancel);
 
-        let backend = if let Some(backend) = backend {
+        let echo_cancel = if let Some(backend) = echo_cancel {
             backend
         } else {
             return Ok(None);
@@ -201,7 +223,7 @@ impl AudioSupport {
             default_sink,
             default_source,
             sink_id: 0,
-            backend,
+            echo_cancel,
         };
 
         audio_support.setup()?;
@@ -225,10 +247,10 @@ impl AudioSupport {
             .context("failed to parse sink_id")?;
         trace!("sink_id = {}", self.sink_id);
 
-        self.backend.setup(&self.default_sink)?;
+        self.echo_cancel.setup(&self.default_sink)?;
 
-        match self.backend {
-            AudioBackend::Pulseaudio { .. } => {
+        match self.echo_cancel {
+            EchoCancel::Pulseaudio { .. } => {
                 run_cmd!("pactl", "set-default-source", "dcamctl_webcam_ec_src" => "failed to set dcamctl as default source");
                 run_cmd!("pactl", "set-default-sink", "dcamctl_webcam_ec_aout" => "failed to set dcamctl as default sink");
 
@@ -245,7 +267,7 @@ impl AudioSupport {
                     "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)"
                 );
             }
-            AudioBackend::PipeWirePulse => {
+            EchoCancel::Disabled => {
                 run_cmd!("pactl", "set-default-source", "dcamctl_webcam.monitor" => "failed to set dcamctl as default source");
 
                 info!("set up default audio input 'Webcam Virtual Microphone'");
@@ -287,10 +309,10 @@ impl Drop for AudioSupport {
     }
 }
 
-impl AudioBackend {
+impl EchoCancel {
     fn setup(&mut self, default_sink: &str) -> Result<()> {
         match self {
-            AudioBackend::Pulseaudio { cancel_sink_id } => {
+            EchoCancel::Pulseaudio { cancel_sink_id } => {
                 let output = get_cmd!(
                     "pactl",
                     "load-module",
@@ -315,17 +337,17 @@ impl AudioBackend {
                 trace!("cancel_sink_id={}", new_cancel_sink_id);
                 *cancel_sink_id = new_cancel_sink_id;
             }
-            AudioBackend::PipeWirePulse => {}
+            EchoCancel::Disabled => {}
         };
 
         Ok(())
     }
 }
 
-impl Drop for AudioBackend {
+impl Drop for EchoCancel {
     fn drop(&mut self) {
         match self {
-            AudioBackend::Pulseaudio { cancel_sink_id } => {
+            EchoCancel::Pulseaudio { cancel_sink_id } => {
                 run_cmd!("pactl", "unload-module", &cancel_sink_id.to_string() =>
                     "failed to unload echo cancellation module",
                     |s| warn!(
@@ -334,7 +356,7 @@ impl Drop for AudioBackend {
                     )
                 );
             }
-            AudioBackend::PipeWirePulse => {}
+            EchoCancel::Disabled => {}
         }
     }
 }

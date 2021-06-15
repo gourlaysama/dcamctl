@@ -160,7 +160,7 @@ impl AudioSupport {
         let output = get_cmd!("pactl", "info" => "failed to get pulseaudio info");
         let out = String::from_utf8_lossy(&output.stdout);
 
-        let re = Regex::new(r"PipeWire ([^\s\)]+)?").unwrap();
+        let re = Regex::new(r"PipeWire ([^[[:space:]]\)]+)?").unwrap();
         let mut default_sink = String::new();
         let mut default_source = String::new();
         let mut echo_cancel = None;

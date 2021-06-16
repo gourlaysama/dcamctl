@@ -51,8 +51,9 @@ impl CamControl {
     fn display_status(&mut self) -> Result<()> {
         if let Some((zoom_idx, zoom_end)) = self.zoom_index() {
             let p = (100 * zoom_idx) / zoom_end;
+            let q = self.cam_info.curvals.quality;
             if log_enabled!(log::Level::Error) {
-                write!(self.stdout, "Zoom: {:2} %\r", p)?;
+                write!(self.stdout, "Zoom: {:2} %, Quality: {:2} %\r", p, q)?;
                 self.stdout.flush()?;
             }
         }
@@ -141,6 +142,10 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
     while let Some(cmd) = cmds.next().await {
         match cmd {
             Command::Quit => {
+                if log_enabled!(log::Level::Error) {
+                    write!(control.stdout, "{}", termion::clear::CurrentLine)?;
+                    control.stdout.flush()?;
+                }
                 control
                     .quit
                     .send(())

@@ -170,7 +170,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 .await?;
             }
             Command::PanLeft => {
-                let new_x = &control.cam_info.curvals.crop_x - 1;
+                let new_x = &control.cam_info.curvals.crop_x.max(1) - 1;
                 reqwest::get(format!(
                     "http://127.0.0.1:{}/settings/crop_x?set={}",
                     control.port, new_x
@@ -186,7 +186,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 .await?;
             }
             Command::PanUp => {
-                let new_x = &control.cam_info.curvals.crop_y - 1;
+                let new_x = &control.cam_info.curvals.crop_y.max(1) - 1;
                 reqwest::get(format!(
                     "http://127.0.0.1:{}/settings/crop_y?set={}",
                     control.port, new_x

@@ -78,7 +78,7 @@ impl Dcam {
         );
         show!(Warn, "\r  Video     : {}\r", device_str);
 
-        show!("Press 'q' to disconnect, 'z'/'Z' to zoom in/out.\r");
+        show!("Press 'q' to disconnect, 'z'/'Z' to zoom in/out, arrows to pan.\r");
 
         Ok(Dcam {
             port,

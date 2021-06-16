@@ -10,6 +10,10 @@ pub struct CamInfo {
 pub struct CurrentValues {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub zoom: u16,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub crop_x: u32,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub crop_y: u32,
 }
 
 #[derive(Debug, serde::Deserialize)]

@@ -12,6 +12,10 @@ enum Command {
     ZoomIn,
     ZoomOut,
     Nothing,
+    PanLeft,
+    PanRight,
+    PanUp,
+    PanDown,
 }
 
 #[derive(Debug)]
@@ -19,7 +23,7 @@ struct CamControl {
     quit: Sender<()>,
     port: u16,
     cam_info: CamInfo,
-    stdout: Stdout
+    stdout: Stdout,
 }
 
 impl CamControl {
@@ -30,7 +34,7 @@ impl CamControl {
             quit,
             port,
             cam_info,
-            stdout: std::io::stdout()
+            stdout: std::io::stdout(),
         })
     }
 
@@ -158,6 +162,38 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 ))
                 .await?;
             }
+            Command::PanLeft => {
+                let new_x = &control.cam_info.curvals.crop_x - 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/crop_x?set={}",
+                    control.port, new_x
+                ))
+                .await?;
+            }
+            Command::PanRight => {
+                let new_x = &control.cam_info.curvals.crop_x + 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/crop_x?set={}",
+                    control.port, new_x
+                ))
+                .await?;
+            }
+            Command::PanUp => {
+                let new_x = &control.cam_info.curvals.crop_y - 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/crop_y?set={}",
+                    control.port, new_x
+                ))
+                .await?;
+            }
+            Command::PanDown => {
+                let new_x = &control.cam_info.curvals.crop_y + 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/crop_y?set={}",
+                    control.port, new_x
+                ))
+                .await?;
+            }
         }
 
         control.refresh().await?;
@@ -189,6 +225,10 @@ fn input_commands() -> impl Stream<Item = Command> {
         Key::Char('q') => Quit,
         Key::Char('z') => ZoomIn,
         Key::Char('Z') => ZoomOut,
+        Key::Left => PanLeft,
+        Key::Right => PanRight,
+        Key::Up => PanUp,
+        Key::Down => PanDown,
         _ => Nothing,
     })
 }

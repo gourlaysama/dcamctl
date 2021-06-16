@@ -16,6 +16,8 @@ enum Command {
     PanRight,
     PanUp,
     PanDown,
+    QualityUp,
+    QualityDown,
 }
 
 #[derive(Debug)]
@@ -194,6 +196,22 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 ))
                 .await?;
             }
+            Command::QualityUp => {
+                let new_q = &control.cam_info.curvals.quality + 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/quality?set={}",
+                    control.port, new_q
+                ))
+                .await?;
+            },
+            Command::QualityDown => {
+                let new_q = &control.cam_info.curvals.quality - 1;
+                reqwest::get(format!(
+                    "http://127.0.0.1:{}/settings/quality?set={}",
+                    control.port, new_q
+                ))
+                .await?;
+            },
         }
 
         control.refresh().await?;
@@ -225,6 +243,8 @@ fn input_commands() -> impl Stream<Item = Command> {
         Key::Char('q') => Quit,
         Key::Char('z') => ZoomIn,
         Key::Char('Z') => ZoomOut,
+        Key::Char('t') => QualityUp,
+        Key::Char('T') => QualityDown,
         Key::Left => PanLeft,
         Key::Right => PanRight,
         Key::Up => PanUp,

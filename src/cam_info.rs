@@ -14,6 +14,8 @@ pub struct CurrentValues {
     pub crop_x: u32,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub crop_y: u32,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub quality: u16,
 }
 
 #[derive(Debug, serde::Deserialize)]

@@ -1,15 +1,13 @@
-use std::{
-    path::Path,
-    sync::mpsc::{self, Receiver},
-};
+use std::path::Path;
 
 use anyhow::*;
 use dcamctl::{cli::ProgramOptions, config::*};
-use dcamctl::{show, AdbServer, AudioSupport, Pipeline};
+use dcamctl::{show, AdbServer, AudioSupport, Dcam};
 use directories_next::ProjectDirs;
 use env_logger::{Builder, Env};
 use log::*;
 use structopt::StructOpt;
+use tokio::runtime;
 
 type ReturnCode = i32;
 
@@ -20,6 +18,7 @@ fn main() -> Result<()> {
 
     let mut b = Builder::default();
     b.format_timestamp(None);
+    b.format_suffix("\r\n");
     b.filter_level(LevelFilter::Warn); // default filter lever
     b.parse_env(Env::from("DCAMCTL_LOG")); // override with env
                                            // override with CLI option
@@ -28,7 +27,9 @@ fn main() -> Result<()> {
     };
     b.try_init()?;
 
-    std::process::exit(match run(options) {
+    let rt = runtime::Builder::new_multi_thread().enable_all().build()?;
+
+    std::process::exit(match rt.block_on(run(options)) {
         Ok(i) => i,
         Err(e) => {
             show!("Error: {}", e);
@@ -40,16 +41,13 @@ fn main() -> Result<()> {
     })
 }
 
-fn run(options: ProgramOptions) -> Result<ReturnCode> {
+async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     let conf = make_config(options)?;
 
     check_kernel_module()?;
 
-    // start adb-server if not already started
     AdbServer::init()?;
-
-    // add forwarding rule
-    let _guard = AdbServer::forward_port(conf.port)?;
+    let _server = AdbServer::connect(conf.port)?;
 
     gstreamer::init()?;
 
@@ -58,21 +56,11 @@ fn run(options: ProgramOptions) -> Result<ReturnCode> {
     } else {
         AudioSupport::new()?
     };
-    let pipeline = Pipeline::new(audio, &conf.device, conf.resolution, conf.port)?;
+    let mut pipeline = Dcam::new(audio, &conf.device, conf.resolution, conf.port)?;
 
-    show!("Press <Ctrl-C> to disconnect the webcam.");
-    pipeline.run(watch_quit()?)?;
-    show!("\nDisconnected.");
+    pipeline.run().await?;
 
     Ok(0)
-}
-
-fn watch_quit() -> Result<Receiver<()>> {
-    let (tx, rx) = mpsc::channel::<()>();
-    ctrlc::set_handler(move || {
-        tx.send(()).unwrap();
-    })?;
-    Ok(rx)
 }
 
 fn check_kernel_module() -> Result<()> {

@@ -1,22 +1,21 @@
-use std::{
-    path::Path,
-    sync::mpsc::{Receiver, TryRecvError},
-};
+use std::{io::Stdout, path::Path};
 
 use crate::config::Resolution;
 use anyhow::*;
+use futures::{FutureExt, StreamExt};
 use gstreamer::prelude::*;
 use log::*;
 use regex::Regex;
+use termion::raw::{IntoRawMode, RawTerminal};
 
+mod cam_info;
 pub mod cli;
 pub mod config;
+mod control;
 #[macro_use]
 mod macros;
 
-pub struct AdbServer {}
-
-pub struct AdbServerGuard {
+pub struct AdbServer {
     port: u16,
 }
 
@@ -27,16 +26,16 @@ impl AdbServer {
         Ok(())
     }
 
-    pub fn forward_port(port: u16) -> Result<AdbServerGuard> {
+    pub fn connect(port: u16) -> Result<AdbServer> {
         let port_str = format!("tcp:{}", port);
         run_cmd!("adb", "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
         debug!("forwarding adb port {} to 127.0.0.1:{}", port, port);
 
-        Ok(AdbServerGuard { port })
+        Ok(AdbServer { port })
     }
 }
 
-impl Drop for AdbServerGuard {
+impl Drop for AdbServer {
     fn drop(&mut self) {
         run_cmd!("adb", "forward", "--remove", &format!("tcp:{}", self.port) => "could not remove adb tcp forwarding", |s| {
             warn!("could not remove adb tcp forwarding (got {})", s)
@@ -44,18 +43,22 @@ impl Drop for AdbServerGuard {
     }
 }
 
-pub struct Pipeline {
+pub struct Dcam {
+    port: u16,
     pipeline: gstreamer::Element,
     _audio: Option<AudioSupport>,
+    _stdout: RawTerminal<Stdout>,
 }
 
-impl Pipeline {
+impl Dcam {
     pub fn new(
         audio: Option<AudioSupport>,
         device: &Path,
         resolution: Resolution,
         port: u16,
-    ) -> Result<Pipeline> {
+    ) -> Result<Dcam> {
+        let mut _stdout = std::io::stdout().into_raw_mode()?;
+
         let device_str = device.to_string_lossy();
         let caps = format!(
             "video/x-raw,format=YUY2,width={},height={}",
@@ -73,15 +76,19 @@ impl Pipeline {
             "set up video input '{}' with resolution {}",
             device_str, resolution
         );
-        show!(Warn, "  Video     : {}", device_str);
+        show!(Warn, "\r  Video     : {}\r", device_str);
 
-        Ok(Pipeline {
+        show!("Press 'q': quit, 'z'/'Z': zoom, 't'/'T': quality, arrows: pan.\r");
+
+        Ok(Dcam {
+            port,
             pipeline,
             _audio: audio,
+            _stdout,
         })
     }
 
-    pub fn run(&self, stop: Receiver<()>) -> Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         self.pipeline.set_state(gstreamer::State::Playing)?;
         debug!("running pipeline");
 
@@ -89,47 +96,42 @@ impl Pipeline {
             Some(b) => b,
             None => bail!("No bus for gstreamer pipeline"),
         };
-        loop {
-            let msg = bus.timed_pop(100 * gstreamer::MSECOND);
-            if let Some(msg) = msg {
-                use gstreamer::MessageView;
 
-                match msg.view() {
-                    MessageView::Eos(..) => {
-                        warn!("received end-of-stream, quitting");
-                        break;
-                    }
-                    MessageView::Error(err) => {
-                        error!(
-                            "Error from {:?}: {} ({:?})",
-                            err.get_src().map(|s| s.get_path_string()),
-                            err.get_error(),
-                            err.get_debug()
-                        );
-                        break;
-                    }
-                    _ => {}
-                }
-            }
+        let stop_signals = crate::control::stop_signals().boxed_local();
+        let quit_command = crate::control::process_commands(self.port).boxed_local();
+        let stop_run = futures::future::select(stop_signals, quit_command);
+        let mut stream = bus.stream().take_until(stop_run);
 
-            match stop.try_recv() {
-                Ok(_) => {
-                    debug!("Received quit command; quitting");
+        while let Some(msg) = stream.next().await {
+            use gstreamer::MessageView;
+
+            match msg.view() {
+                MessageView::Eos(..) => {
+                    warn!("received end-of-stream, quitting");
                     break;
                 }
-                Err(TryRecvError::Empty) => {}
-                Err(a) => return Err(anyhow!("Internal threading error").context(a)),
+                MessageView::Error(err) => {
+                    error!(
+                        "Error from {:?}: {} ({:?})",
+                        err.get_src().map(|s| s.get_path_string()),
+                        err.get_error(),
+                        err.get_debug()
+                    );
+                    break;
+                }
+                _ => {}
             }
         }
 
-        // Stop pipeline
         self.pipeline.set_state(gstreamer::State::Paused)?;
+
+        show!("Disconnected.\r");
 
         Ok(())
     }
 }
 
-impl Drop for Pipeline {
+impl Drop for Dcam {
     fn drop(&mut self) {
         // Shutdown pipeline
         if let Err(e) = self.pipeline.set_state(gstreamer::State::Null) {
@@ -257,14 +259,14 @@ impl AudioSupport {
                 info!("set up default audio input 'Webcam Virtual Microphone (EC-cancelled)'");
                 info!("set up default audio output 'Default Audio Out (EC-cancelled with Webcam Virtual Microphone)'");
 
-                show!(Warn, "Setting temporary defaults:");
+                show!(Warn, "\rSetting temporary defaults:");
                 show!(
                     Warn,
-                    "  Microphone: Webcam Virtual Microphone (EC-cancelled)"
+                    "  Microphone: Webcam Virtual Microphone (EC-cancelled)\r"
                 );
                 show!(
                     Warn,
-                    "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)"
+                    "  Speaker   : Default Audio Out (EC-cancelled with Webcam Virtual Microphone)\r"
                 );
             }
             EchoCancel::Disabled => {
@@ -272,8 +274,8 @@ impl AudioSupport {
 
                 info!("set up default audio input 'Webcam Virtual Microphone'");
 
-                show!(Warn, "Setting temporary defaults:");
-                show!(Warn, "  Microphone: Webcam Virtual Microphone");
+                show!(Warn, "Setting temporary defaults:\r");
+                show!(Warn, "  Microphone: Webcam Virtual Microphone\r");
             }
         }
 

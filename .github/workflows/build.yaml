@@ -19,7 +19,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.50.0 # Rust MSRV
+          - 1.51.0 # Rust MSRV
     steps:
       - uses: actions/checkout@v2
       - name: Install native dependencies
@@ -42,7 +42,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.50.0 # Rust MSRV
+          - 1.51.0 # Rust MSRV
     steps:
       - uses: actions/checkout@v2
       - name: Install native dependencies

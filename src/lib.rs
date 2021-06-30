@@ -78,8 +78,6 @@ impl Dcam {
         );
         show!(Warn, "\r  Video     : {}\r", device_str);
 
-        show!("Press 'q': quit, 'z'/'Z': zoom, 't'/'T': quality, arrows: pan.\r");
-
         Ok(Dcam {
             port,
             pipeline,

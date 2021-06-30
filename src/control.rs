@@ -29,15 +29,16 @@ struct CamControl {
 }
 
 impl CamControl {
-    async fn new(quit: Sender<()>, port: u16) -> Result<CamControl> {
-        let cam_info = get_cam_info(port, true).await?;
-
-        Ok(CamControl {
-            quit,
-            port,
-            cam_info,
-            stdout: std::io::stdout(),
-        })
+    async fn new(quit: Sender<()>, port: u16) -> Result<CamControl, (Error, Sender<()>)> {
+        match get_cam_info(port, true).await {
+            Ok(cam_info) => Ok(CamControl {
+                quit,
+                port,
+                cam_info,
+                stdout: std::io::stdout(),
+            }),
+            Err(e) => Err((e, quit)),
+        }
     }
 
     async fn refresh(&mut self) -> Result<()> {
@@ -125,7 +126,14 @@ pub async fn process_commands(port: u16) -> Result<()> {
                     Err(e) => error!("{}", e),
                 };
             }
-            Err(e) => error!("{}", e),
+            Err((e, tx)) => {
+                debug!("{}", e);
+                warn!("failed to connect to droidcam controls; falling back.");
+                match process_commands_fallback(tx).await {
+                    Ok(_) => {}
+                    Err(e) => error!("{}", e),
+                };
+            }
         };
     });
 
@@ -138,6 +146,10 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
     let mut cmds = input_commands().boxed();
     let mut control = control;
 
+    writeln!(
+        control.stdout,
+        "Press 'q': quit, 'z'/'Z': zoom, 't'/'T': quality, arrows: pan.\r"
+    )?;
     control.display_status()?;
     while let Some(cmd) = cmds.next().await {
         match cmd {
@@ -208,7 +220,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                     control.port, new_q
                 ))
                 .await?;
-            },
+            }
             Command::QualityDown => {
                 let new_q = &control.cam_info.curvals.quality - 1;
                 reqwest::get(format!(
@@ -216,11 +228,30 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                     control.port, new_q
                 ))
                 .await?;
-            },
+            }
         }
 
         control.refresh().await?;
         control.display_status()?;
+    }
+
+    Ok(())
+}
+
+async fn process_commands_fallback(quit: Sender<()>) -> Result<()> {
+    let mut cmds = input_commands().boxed();
+    let mut stdout = std::io::stdout();
+
+    writeln!(stdout, "Press 'q' to quit.\r")?;
+    while let Some(cmd) = cmds.next().await {
+        if let Command::Quit = cmd {
+            if log_enabled!(log::Level::Error) {
+                write!(stdout, "{}", termion::clear::CurrentLine)?;
+                stdout.flush()?;
+            }
+            quit.send(()).map_err(|_| anyhow!("broken channel"))?;
+            break;
+        }
     }
 
     Ok(())

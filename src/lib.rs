@@ -92,7 +92,7 @@ impl Dcam {
         self.pipeline.set_state(gstreamer::State::Playing)?;
         debug!("running pipeline");
 
-        let bus = match self.pipeline.get_bus() {
+        let bus = match self.pipeline.bus() {
             Some(b) => b,
             None => bail!("No bus for gstreamer pipeline"),
         };
@@ -113,9 +113,9 @@ impl Dcam {
                 MessageView::Error(err) => {
                     error!(
                         "Error from {:?}: {} ({:?})",
-                        err.get_src().map(|s| s.get_path_string()),
-                        err.get_error(),
-                        err.get_debug()
+                        err.src().map(|s| s.path_string()),
+                        err.error(),
+                        err.debug()
                     );
                     break;
                 }

@@ -122,7 +122,7 @@ dcamctl 0.2.1
 
 ## Configuration
 
-dcamctl doesn't create a configuration file for you, but looks for it in in `$XDG_CONFIG_HOME/dcamctl/config.yml` or `$HOME/.config/dcamctl/config.yml`. See the default configuration file at [`config.yml`](config.yml) for an example.
+dcamctl doesn't create a configuration file for you, but looks for it in in `$XDG_CONFIG_HOME/dcamctl/config.yml` or `$HOME/.config/dcamctl/config.yml`. See the default configuration file at [`config.yml`][2] for an example.
 
 ### Configuration keys
 
@@ -151,3 +151,4 @@ dual licensed as above, without any additional terms or conditions.
 [ip webcam]: https://play.google.com/store/apps/details?id=com.pas.webcam
 [for example here]: https://joyofandroid.com/how-to-enable-usb-debugging-on-android/
 [1]: https://github.com/umlaeute/v4l2loopback
+[2]: https://github.com/gourlaysama/dcamctl/blob/v0.2.1/config.yml

@@ -56,7 +56,7 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     } else {
         AudioSupport::new()?
     };
-    let mut pipeline = Dcam::new(audio, &conf.device, conf.resolution, conf.port)?;
+    let mut pipeline = Dcam::setup(audio, &conf.device, conf.resolution, conf.port).await?;
 
     pipeline.run().await?;
 

@@ -24,7 +24,7 @@ pub struct ProgramOptions {
     /// Output resolution to use.
     ///
     /// The video feed will be resized to this value if needed.
-    /// [default: 640x480]
+    /// [default: auto]
     #[structopt(long, short)]
     pub resolution: Option<String>,
 

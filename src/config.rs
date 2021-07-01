@@ -8,7 +8,7 @@ pub struct ProgramConfig {
     pub port: u16,
     pub device: PathBuf,
     #[serde(with = "resolution")]
-    pub resolution: Resolution,
+    pub resolution: Option<Resolution>,
     pub no_audio: bool,
 }
 
@@ -51,12 +51,16 @@ mod resolution {
     use serde::{de, Deserialize, Deserializer};
     use std::str::FromStr;
 
-    pub fn deserialize<'de, D>(d: D) -> Result<Resolution, D::Error>
+    pub fn deserialize<'de, D>(d: D) -> Result<Option<Resolution>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s = String::deserialize(d)?;
 
-        FromStr::from_str(&s).map_err(de::Error::custom)
+        if s == "auto" {
+            Ok(None)
+        } else {
+            FromStr::from_str(&s).map(Some).map_err(de::Error::custom)
+        }
     }
 }

@@ -100,7 +100,7 @@ impl CamControl {
     }
 }
 
-async fn get_cam_info(port: u16, init: bool) -> Result<CamInfo> {
+pub async fn get_cam_info(port: u16, init: bool) -> Result<CamInfo> {
     let show = if init { "1" } else { "0" };
     let c = reqwest::get(format!(
         "http://127.0.0.1:{}/status.json?show_avail={}",
@@ -128,7 +128,7 @@ pub async fn process_commands(port: u16) -> Result<()> {
             }
             Err((e, tx)) => {
                 debug!("{}", e);
-                warn!("failed to connect to droidcam controls; falling back.");
+                warn!("failed to connect to droidcam controls; disabling device control.");
                 match process_commands_fallback(tx).await {
                     Ok(_) => {}
                     Err(e) => error!("{}", e),

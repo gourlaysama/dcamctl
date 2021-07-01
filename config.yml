@@ -2,5 +2,5 @@
 # (fallback value if the key isn't present in the config file or on the command line)
 port: 8080
 device: "/dev/video0"
-resolution: "640x480"
+resolution: "auto"
 no_audio: false

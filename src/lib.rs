@@ -51,13 +51,37 @@ pub struct Dcam {
 }
 
 impl Dcam {
-    pub fn new(
+    pub async fn setup(
         audio: Option<AudioSupport>,
         device: &Path,
-        resolution: Resolution,
+        resolution: Option<Resolution>,
         port: u16,
     ) -> Result<Dcam> {
         let mut _stdout = std::io::stdout().into_raw_mode()?;
+
+        let resolution = match resolution {
+            Some(r) => r,
+            None => {
+                match control::get_cam_info(port, false).await {
+                    Ok(cam_info) => {
+                        debug!(
+                            "autodetecting default resolution of {}",
+                            cam_info.curvals.video_size
+                        );
+                        cam_info.curvals.video_size
+                    },
+                    Err(e) => {
+                        debug!("{}", e);
+                        warn!("failed to autodetect device resolution; using 640x480");
+                        Resolution {
+                            height: 480,
+                            width: 640,
+                        }
+                    },
+                }
+                
+            }
+        };
 
         let device_str = device.to_string_lossy();
         let caps = format!(

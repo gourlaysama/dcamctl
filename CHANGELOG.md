@@ -5,6 +5,19 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Packaging
+
+* The Minimum Supported Rust Version is now 1.51.
+
+### Added
+
+* The IP Webcam Android application can now be controlled from the terminal if dcamctl detects support. Available controls are:
+  zoom in/out with `z/Z`, quality up/down with `t/T` and panning with direction keys.
+* The `resolution` option supports the new value `auto`, in which the video resolution is automatically detected by querying the IP Webcam application, with a fallback to `640x480`.
+
+### Changed
+
+* The default value for `resolution` is now `auto`.
 
 ## [0.2.1] - 2021-06-15
 

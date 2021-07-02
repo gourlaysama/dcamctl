@@ -68,11 +68,11 @@ Building dcam requires gstreamer 1.0 and its required gtk packages (`libgstreame
 Build from source with:
 
 ```sh
-$ git clone https://github.com/gourlaysama/dcamctl -b v0.2.1
+$ git clone https://github.com/gourlaysama/dcamctl -b v0.3.0
 $ cd dcamctl
 $ cargo build --release
 $ ./target/release/dcamctl --version
-dcamctl 0.2.1
+dcamctl 0.3.0
 ```
 
 ## Options
@@ -151,4 +151,4 @@ dual licensed as above, without any additional terms or conditions.
 [ip webcam]: https://play.google.com/store/apps/details?id=com.pas.webcam
 [for example here]: https://joyofandroid.com/how-to-enable-usb-debugging-on-android/
 [1]: https://github.com/umlaeute/v4l2loopback
-[2]: https://github.com/gourlaysama/dcamctl/blob/v0.2.1/config.yml
+[2]: https://github.com/gourlaysama/dcamctl/blob/v0.3.0/config.yml

@@ -61,7 +61,7 @@ What roughly happens:
 ## Building from source
 
 dcamctl is written in Rust, so you need a [Rust install] to build it. dcamctl compiles with
-Rust 1.50 or newer.
+Rust 1.51 or newer.
 
 Building dcam requires gstreamer 1.0 and its required gtk packages (`libgstreamer1.0-dev` on Ubuntu, `gstreamer1-devel` on Fedora).
 
@@ -100,7 +100,7 @@ dcamctl 0.3.0
 -r, --resolution <resolution>
     Output resolution to use.
 
-    The video feed will be resized to this value if needed. [default: 640x480]
+    The video feed will be resized to this value if needed. [default: auto]
 
 -n, --no-audio
     Disable audio support.
@@ -128,7 +128,7 @@ dcamctl doesn't create a configuration file for you, but looks for it in in `$XD
 
 - `port` (number): the port to forward between the device and localhost (can be overriden on the command-line with `-p/--port`).
 - `device` (string): the v4l2loopback video device to use (can be overriden on the command-line with `-d/--device`).
-- `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`).
+- `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`). Can be set to a pair like `640x480`, or make dcamctl autodetect the resolution with `auto`.
 - `no_audio` (boolean): if true, disable audio support (can be overriden on the command-line with `-n/--no-audio`).
 
 ---

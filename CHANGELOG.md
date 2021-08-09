@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Security
+
+* update dependencies to fix [RUSTSEC-2021-0078], [RUSTSEC-2021-0079], and [RUSTSEC-2021-0072].
 
 ## [0.3.0] - 2021-07-02
 
@@ -70,3 +73,6 @@
 [0.2.0]: https://github.com/gourlaysama/dcamctl/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/gourlaysama/dcamctl/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gourlaysama/dcamctl/compare/a6e91ef...v0.1.0
+[RUSTSEC-2021-0078]: https://rustsec.org/advisories/RUSTSEC-2021-0078
+[RUSTSEC-2021-0079]: https://rustsec.org/advisories/RUSTSEC-2021-0079
+[RUSTSEC-2021-0072]: https://rustsec.org/advisories/RUSTSEC-2021-0072

@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1"
 log = '0.4'
-env_logger = '0.8'
+env_logger = '0.9'
 gstreamer = "0.17"
 directories-next = '2'
 ctrlc = { version = "3", features = ["termination"] }

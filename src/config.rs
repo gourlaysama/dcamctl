@@ -10,6 +10,7 @@ pub struct ProgramConfig {
     #[serde(with = "resolution")]
     pub resolution: Option<Resolution>,
     pub no_audio: bool,
+    pub flip: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

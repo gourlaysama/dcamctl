@@ -45,7 +45,7 @@ impl Drop for AdbServer {
 
 pub struct Dcam {
     port: u16,
-    pipeline: gstreamer::Element,
+    pipeline: gstreamer::Pipeline,
     _audio: Option<AudioSupport>,
     _stdout: RawTerminal<Stdout>,
 }
@@ -56,31 +56,29 @@ impl Dcam {
         device: &Path,
         resolution: Option<Resolution>,
         port: u16,
+        flip: Option<String>,
     ) -> Result<Dcam> {
         let mut _stdout = std::io::stdout().into_raw_mode()?;
 
         let resolution = match resolution {
             Some(r) => r,
-            None => {
-                match control::get_cam_info(port, false).await {
-                    Ok(cam_info) => {
-                        debug!(
-                            "autodetecting default resolution of {}",
-                            cam_info.curvals.video_size
-                        );
+            None => match control::get_cam_info(port, false).await {
+                Ok(cam_info) => {
+                    debug!(
+                        "autodetecting default resolution of {}",
                         cam_info.curvals.video_size
-                    },
-                    Err(e) => {
-                        debug!("{}", e);
-                        warn!("failed to autodetect device resolution; using 640x480");
-                        Resolution {
-                            height: 480,
-                            width: 640,
-                        }
-                    },
+                    );
+                    cam_info.curvals.video_size
                 }
-                
-            }
+                Err(e) => {
+                    debug!("{}", e);
+                    warn!("failed to autodetect device resolution; using 640x480");
+                    Resolution {
+                        height: 480,
+                        width: 640,
+                    }
+                }
+            },
         };
 
         let device_str = device.to_string_lossy();
@@ -88,13 +86,25 @@ impl Dcam {
             "video/x-raw,format=YUY2,width={},height={}",
             resolution.width, resolution.height
         );
+        let method = match flip.as_deref() {
+            Some("horizontal") => "horizontal-flip",
+            Some("vertical") => "vertical-flip",
+            Some("none") | None => "none",
+            Some(other) => {
+                debug!("unknown flip method '{}', ignoring", other);
+                "none"
+            }
+        };
+
         let mut pipeline_desc = String::new();
         if audio.is_some() {
             pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port));
         }
-        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, caps, device_str));
+        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoflip name=flip_elem method=\"{}\" ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, method,  caps, device_str));
 
-        let pipeline = gstreamer::parse_launch(&pipeline_desc)?;
+        let pipeline = gstreamer::parse_launch(&pipeline_desc)?
+            .downcast()
+            .map_err(|_| anyhow!("broken pipeline"))?;
 
         info!(
             "set up video input '{}' with resolution {}",
@@ -119,8 +129,13 @@ impl Dcam {
             None => bail!("No bus for gstreamer pipeline"),
         };
 
+        let flip = self
+            .pipeline
+            .by_name("flip_elem")
+            .ok_or_else(|| anyhow!("missing videoflip"))?;
+
         let stop_signals = crate::control::stop_signals().boxed_local();
-        let quit_command = crate::control::process_commands(self.port).boxed_local();
+        let quit_command = crate::control::process_commands(self.port, flip).boxed_local();
         let stop_run = futures::future::select(stop_signals, quit_command);
         let mut stream = bus.stream().take_until(stop_run);
 

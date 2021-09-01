@@ -56,31 +56,29 @@ impl Dcam {
         device: &Path,
         resolution: Option<Resolution>,
         port: u16,
+        flip: Option<String>,
     ) -> Result<Dcam> {
         let mut _stdout = std::io::stdout().into_raw_mode()?;
 
         let resolution = match resolution {
             Some(r) => r,
-            None => {
-                match control::get_cam_info(port, false).await {
-                    Ok(cam_info) => {
-                        debug!(
-                            "autodetecting default resolution of {}",
-                            cam_info.curvals.video_size
-                        );
+            None => match control::get_cam_info(port, false).await {
+                Ok(cam_info) => {
+                    debug!(
+                        "autodetecting default resolution of {}",
                         cam_info.curvals.video_size
-                    },
-                    Err(e) => {
-                        debug!("{}", e);
-                        warn!("failed to autodetect device resolution; using 640x480");
-                        Resolution {
-                            height: 480,
-                            width: 640,
-                        }
-                    },
+                    );
+                    cam_info.curvals.video_size
                 }
-                
-            }
+                Err(e) => {
+                    debug!("{}", e);
+                    warn!("failed to autodetect device resolution; using 640x480");
+                    Resolution {
+                        height: 480,
+                        width: 640,
+                    }
+                }
+            },
         };
 
         let device_str = device.to_string_lossy();
@@ -88,11 +86,26 @@ impl Dcam {
             "video/x-raw,format=YUY2,width={},height={}",
             resolution.width, resolution.height
         );
+        let gst_flip = if let Some(method) = flip {
+            let method = match &*method {
+                "horizontal" => "horizontal-flip",
+                "vertical" => "vertical-flip",
+                "none" => "none",
+                s => {
+                    debug!("unknown flip method '{}', ignoring", s);
+                    "none"
+                }
+            };
+            format!("! videoflip method=\"{}\"", method)
+        } else {
+            String::new()
+        };
+
         let mut pipeline_desc = String::new();
         if audio.is_some() {
             pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port));
         }
-        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, caps, device_str));
+        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin {} ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, gst_flip,  caps, device_str));
 
         let pipeline = gstreamer::parse_launch(&pipeline_desc)?;
 

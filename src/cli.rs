@@ -41,6 +41,12 @@ pub struct ProgramOptions {
     #[structopt(long, short)]
     pub no_audio: bool,
 
+    /// Flip method used to rotate/mirror the video.
+    ///
+    /// Defaults to none.
+    #[structopt(long, short, possible_values(&["horizontal", "vertical", "none"]))]
+    pub flip: Option<String>,
+
     /// Pass for more log output.
     #[structopt(long, short, global = true, parse(from_occurrences))]
     verbose: i8,

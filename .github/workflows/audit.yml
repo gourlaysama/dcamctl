@@ -13,6 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+        if: ${{ github.event_name == 'schedule' }}
+      - name: Switch to latest tag
+        run: git checkout ${{ steps.get-latest-tag.outputs.tag }}
+        if: ${{ github.event_name == 'schedule' }}
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

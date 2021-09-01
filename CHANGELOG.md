@@ -5,6 +5,14 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Packaging
+
+* The Minimum Supported Gstreamer Version is now 1.10.
+* Building dcamctl now requires the development headers for gstreamer-video (`libgstreamer-plugins-base1.0-dev` on Ubuntu, `gstreamer1-plugins-base-devel` on Fedora).
+
+### Features
+
+* New `--flip/-f <horizontal|vertical|none>` option to horizontally/vertically mirror the video. This can also be controlled from the terminal with the `f` key.
 
 ## [0.3.1] - 2021-08-09
 

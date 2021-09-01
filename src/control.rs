@@ -3,6 +3,8 @@ use std::io::{Stdout, Write};
 use crate::cam_info::CamInfo;
 use anyhow::*;
 use futures::{FutureExt, Stream, StreamExt};
+use gstreamer::prelude::ObjectExt;
+use gstreamer_video::VideoOrientationMethod;
 use log::*;
 use termion::{event::Key, input::TermRead};
 use tokio::{signal::unix::SignalKind, sync::oneshot::Sender};
@@ -18,6 +20,7 @@ enum Command {
     PanDown,
     QualityUp,
     QualityDown,
+    Flip,
 }
 
 #[derive(Debug)]
@@ -26,16 +29,22 @@ struct CamControl {
     port: u16,
     cam_info: CamInfo,
     stdout: Stdout,
+    video_flip: gstreamer::Element,
 }
 
 impl CamControl {
-    async fn new(quit: Sender<()>, port: u16) -> Result<CamControl, (Error, Sender<()>)> {
+    async fn new(
+        quit: Sender<()>,
+        port: u16,
+        video_flip: gstreamer::Element,
+    ) -> Result<CamControl, (Error, Sender<()>)> {
         match get_cam_info(port, true).await {
             Ok(cam_info) => Ok(CamControl {
                 quit,
                 port,
                 cam_info,
                 stdout: std::io::stdout(),
+                video_flip,
             }),
             Err(e) => Err((e, quit)),
         }
@@ -115,11 +124,11 @@ pub async fn get_cam_info(port: u16, init: bool) -> Result<CamInfo> {
     Ok(c)
 }
 
-pub async fn process_commands(port: u16) -> Result<()> {
+pub async fn process_commands(port: u16, video_flip: gstreamer::Element) -> Result<()> {
     let (tx, rx) = tokio::sync::oneshot::channel();
 
     let j = tokio::task::spawn(async move {
-        match CamControl::new(tx, port).await {
+        match CamControl::new(tx, port, video_flip).await {
             Ok(c) => {
                 match process_commands_inner(c).await {
                     Ok(_) => {}
@@ -148,7 +157,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
 
     writeln!(
         control.stdout,
-        "Press 'q': quit, 'z'/'Z': zoom, 't'/'T': quality, arrows: pan.\r"
+        "Press 'q': quit, 'z'/'Z': zoom, 't'/'T': quality, 'f': flip, arrows: pan.\r"
     )?;
     control.display_status()?;
     while let Some(cmd) = cmds.next().await {
@@ -229,6 +238,17 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 ))
                 .await?;
             }
+            Command::Flip => {
+                let method: VideoOrientationMethod =
+                    control.video_flip.property("video-direction")?.get()?;
+                use VideoOrientationMethod::*;
+                let new = match method {
+                    Identity | _90r | _180 | _90l => Horiz,
+                    Horiz => Vert,
+                    _ => Identity,
+                };
+                control.video_flip.set_property("video-direction", new)?;
+            }
         }
 
         control.refresh().await?;
@@ -281,6 +301,7 @@ fn input_commands() -> impl Stream<Item = Command> {
         Key::Char('Z') => ZoomOut,
         Key::Char('t') => QualityUp,
         Key::Char('T') => QualityDown,
+        Key::Char('f') => Flip,
         Key::Left => PanLeft,
         Key::Right => PanRight,
         Key::Up => PanUp,

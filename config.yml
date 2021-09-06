@@ -4,3 +4,4 @@ port: 8080
 device: "/dev/video0"
 resolution: "auto"
 no_audio: false
+# flip: "horizontal"

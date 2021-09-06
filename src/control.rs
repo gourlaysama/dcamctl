@@ -30,6 +30,7 @@ struct CamControl {
     cam_info: CamInfo,
     stdout: Stdout,
     video_flip: gstreamer::Element,
+    flip_method: VideoOrientationMethod,
 }
 
 impl CamControl {
@@ -38,15 +39,17 @@ impl CamControl {
         port: u16,
         video_flip: gstreamer::Element,
     ) -> Result<CamControl, (Error, Sender<()>)> {
-        match get_cam_info(port, true).await {
-            Ok(cam_info) => Ok(CamControl {
+        match (get_cam_info(port, true).await, get_flip_method(&video_flip)) {
+            (Ok(cam_info), Ok(flip_method)) => Ok(CamControl {
                 quit,
                 port,
                 cam_info,
                 stdout: std::io::stdout(),
                 video_flip,
+                flip_method,
             }),
-            Err(e) => Err((e, quit)),
+            (Err(e), _) => Err((e, quit)),
+            (_, Err(e)) => Err((e, quit)),
         }
     }
 
@@ -55,15 +58,24 @@ impl CamControl {
 
         self.cam_info.curvals = new.curvals;
 
+        self.flip_method = get_flip_method(&self.video_flip)?;
+
         Ok(())
     }
 
     fn display_status(&mut self) -> Result<()> {
-        if let Some((zoom_idx, zoom_end)) = self.zoom_index() {
-            let p = (100 * zoom_idx) / zoom_end;
-            let q = self.cam_info.curvals.quality;
-            if log_enabled!(log::Level::Error) {
-                write!(self.stdout, "Zoom: {:2} %, Quality: {:2} %\r", p, q)?;
+        if log_enabled!(log::Level::Error) {
+            if let Some((zoom_idx, zoom_end)) = self.zoom_index() {
+                let p = (100 * zoom_idx) / zoom_end;
+                let q = self.cam_info.curvals.quality;
+
+                let f = match self.flip_method {
+                    VideoOrientationMethod::Horiz => ", Flip: H",
+                    VideoOrientationMethod::Vert => ", Flip: V",
+                    _ => "         ",
+                };
+
+                write!(self.stdout, "Zoom: {:2} %, Quality: {:2} %{}\r", p, q, f)?;
                 self.stdout.flush()?;
             }
         }
@@ -107,6 +119,12 @@ impl CamControl {
             Ok(0)
         }
     }
+}
+
+fn get_flip_method(video_flip: &gstreamer::Element) -> Result<VideoOrientationMethod> {
+    let m: VideoOrientationMethod = video_flip.property("video-direction")?.get()?;
+
+    Ok(m)
 }
 
 pub async fn get_cam_info(port: u16, init: bool) -> Result<CamInfo> {
@@ -239,10 +257,8 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                 .await?;
             }
             Command::Flip => {
-                let method: VideoOrientationMethod =
-                    control.video_flip.property("video-direction")?.get()?;
                 use VideoOrientationMethod::*;
-                let new = match method {
+                let new = match control.flip_method {
                     Identity | _90r | _180 | _90l => Horiz,
                     Horiz => Vert,
                     _ => Identity,

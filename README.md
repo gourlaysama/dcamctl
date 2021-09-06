@@ -38,7 +38,7 @@ dcamctl -d /dev/video1
 dcamctl requires to run:
 
 - the `v4l2loopback` kernel module installed and running,
-- gstreamer 1.0,
+- gstreamer 1.10+,
 - the Android platform tool `adb` ,
 - pulseaudio and its utility tool `pactl` (PipeWire's pulseaudio compatibility layer is also supported).
 
@@ -91,6 +91,11 @@ dcamctl 0.4.0
     under /dev/video* with `v4l2-ctl -d /dev/videoX -D` for the correct one.
     [default: /dev/video0]
 
+-f, --flip <flip>
+    Flip method used to mirror the video.
+
+    Defaults to none. [possible values: horizontal, vertical, none]
+
 -p, --port <port>
     Port to forward between the device and localhost.
 
@@ -130,6 +135,7 @@ dcamctl doesn't create a configuration file for you, but looks for it in in `$XD
 - `device` (string): the v4l2loopback video device to use (can be overriden on the command-line with `-d/--device`).
 - `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`). Can be set to a pair like `640x480`, or make dcamctl autodetect the resolution with `auto`.
 - `no_audio` (boolean): if true, disable audio support (can be overriden on the command-line with `-n/--no-audio`).
+- `flip` (string): the method used to mirror the video, from `horizontal`, `vertical` or `none` (can be overriden on the command-line with `-f/--flip`).
 
 ---
 

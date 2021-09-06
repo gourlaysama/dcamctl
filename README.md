@@ -63,7 +63,7 @@ What roughly happens:
 dcamctl is written in Rust, so you need a [Rust install] to build it. dcamctl compiles with
 Rust 1.51 or newer.
 
-Building dcam requires gstreamer 1.0 and its required gtk packages (`libgstreamer1.0-dev` on Ubuntu, `gstreamer1-devel` on Fedora).
+Building dcamctl requires gstreamer and gstreamer-video 1.10+ (`libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` on Ubuntu, `gstreamer1-devel` and `gstreamer1-plugins-base-devel` on Fedora).
 
 Build from source with:
 

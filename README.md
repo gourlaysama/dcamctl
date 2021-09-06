@@ -142,7 +142,7 @@ dcamctl doesn't create a configuration file for you, but looks for it in in `$XD
 #### License
 
 <sub>
-dcamctl is licensed under either of <a href="LICENSE-APACHE">Apache License, Version 2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
+dcamctl is licensed under the <a href="LICENSE-APACHE">Apache License, Version 2.0</a>.
 </sub>
 
 <br>
@@ -150,7 +150,7 @@ dcamctl is licensed under either of <a href="LICENSE-APACHE">Apache License, Ver
 <sub>
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in dcamctl by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
+licensed as above, without any additional terms or conditions.
 </sub>
 
 [rust install]: https://www.rust-lang.org/tools/install

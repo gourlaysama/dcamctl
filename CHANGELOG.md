@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Features
+
+* New `--no-echo-cancel/-C` option to force disable echo-canceling.
 
 ## [0.4.0] - 2021-09-06
 

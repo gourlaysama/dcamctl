@@ -193,7 +193,7 @@ enum EchoCancel {
 }
 
 impl AudioSupport {
-    pub fn new() -> Result<Option<AudioSupport>> {
+    pub fn new(echo_cancel: bool) -> Result<Option<AudioSupport>> {
         run_cmd!("pactl", "--version" => "unable to find 'pactl' command");
 
         let output = get_cmd!("pactl", "info" => "failed to get pulseaudio info");
@@ -202,7 +202,7 @@ impl AudioSupport {
         let re = Regex::new(r"PipeWire ([^[[:space:]]\)]+)?").unwrap();
         let mut default_sink = String::new();
         let mut default_source = String::new();
-        let mut echo_cancel = None;
+        let mut found_echo_cancel = None;
         for l in out.lines() {
             let mut l = l.split(": ");
             match l.next() {
@@ -214,24 +214,23 @@ impl AudioSupport {
                                 let acancel_version = lenient_semver::parse("0.3.30")?;
                                 if v < acancel_version {
                                     debug!(
-                                        "pirewire {} < {}: disabling audio cancellation",
+                                        "pirewire {} < {}: echo cancellation unsupported",
                                         v, acancel_version
                                     );
-                                    echo_cancel = Some(EchoCancel::Disabled);
+                                    found_echo_cancel = Some(false);
                                 } else {
                                     debug!(
-                                        "pirewire {} >= {}: enabling audio cancellation",
+                                        "pirewire {} >= {}: echo cancellation supported",
                                         v, acancel_version
                                     );
-                                    echo_cancel =
-                                        Some(EchoCancel::Pulseaudio { cancel_sink_id: 0 });
+                                    found_echo_cancel = Some(true);
                                 }
                                 continue;
                             }
                         }
 
                         debug!("using pulseaudio backend");
-                        echo_cancel = Some(EchoCancel::Pulseaudio { cancel_sink_id: 0 });
+                        found_echo_cancel = Some(true);
                     }
                 }
                 Some("Default Sink") => {
@@ -250,11 +249,16 @@ impl AudioSupport {
 
         trace!("default_sink = {}", default_sink);
         trace!("default_source = {}", default_source);
-        trace!("echo_cancel = {:?}", echo_cancel);
+        trace!("echo_cancel = {:?}", found_echo_cancel);
 
-        let echo_cancel = if let Some(backend) = echo_cancel {
-            backend
+        let echo_cancel_backend = if let Some(found) = found_echo_cancel {
+            if echo_cancel && found {
+                EchoCancel::Pulseaudio { cancel_sink_id: 0 }
+            } else {
+                EchoCancel::Disabled
+            }
         } else {
+            debug!("could not find supported audio backend");
             return Ok(None);
         };
 
@@ -262,7 +266,7 @@ impl AudioSupport {
             default_sink,
             default_source,
             sink_id: 0,
-            echo_cancel,
+            echo_cancel: echo_cancel_backend,
         };
 
         audio_support.setup()?;

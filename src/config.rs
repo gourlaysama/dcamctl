@@ -10,6 +10,7 @@ pub struct ProgramConfig {
     #[serde(with = "resolution")]
     pub resolution: Option<Resolution>,
     pub no_audio: bool,
+    pub no_echo_cancel: bool,
     pub flip: Option<String>,
 }
 

@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+
+## [0.4.1] - 2021-09-08
+
 ### Packaging
 
 * fix documentation: dcamctl is licensed under the Apache License v2.0 only.
@@ -88,7 +91,8 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/gourlaysama/dcamctl/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/gourlaysama/dcamctl/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/gourlaysama/dcamctl/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/gourlaysama/dcamctl/compare/v0.2.1...v0.3.0

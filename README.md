@@ -112,6 +112,9 @@ dcamctl 0.4.1
 
     Do not setup audio forwarding or interact at all with the audio system.
 
+-C, --no-echo-cancel
+    Disable echo canceling.
+
 -h, --help
     Prints help information
 
@@ -135,6 +138,7 @@ dcamctl doesn't create a configuration file for you, but looks for it in in `$XD
 - `device` (string): the v4l2loopback video device to use (can be overriden on the command-line with `-d/--device`).
 - `resolution` (string): the output resolution to use (can be overriden on the command-line with `-r/--resolution`). Can be set to a pair like `640x480`, or make dcamctl autodetect the resolution with `auto`.
 - `no_audio` (boolean): if true, disable audio support (can be overriden on the command-line with `-n/--no-audio`).
+- `no_echo_cancel` (boolean): if true, disable echo canceling (can be overriden on the command-line with `-C/--no-echo-cancel`).
 - `flip` (string): the method used to mirror the video, from `horizontal`, `vertical` or `none` (can be overriden on the command-line with `-f/--flip`).
 
 ---

@@ -41,6 +41,7 @@ pub struct ProgramOptions {
     #[structopt(long, short)]
     pub no_audio: bool,
 
+    /// Disable echo canceling.
     #[structopt(long, short = "C")]
     pub no_echo_cancel: bool,
 

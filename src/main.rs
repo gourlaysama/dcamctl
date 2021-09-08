@@ -54,7 +54,7 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     let audio = if conf.no_audio {
         None
     } else {
-        AudioSupport::new()?
+        AudioSupport::new(!conf.no_echo_cancel)?
     };
     let mut pipeline =
         Dcam::setup(audio, &conf.device, conf.resolution, conf.port, conf.flip).await?;
@@ -122,6 +122,9 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     set_conf_from_options(&mut conf, &options.flip, "flip")?;
     if options.no_audio {
         conf.set("no_audio", Some(true))?;
+    }
+    if options.no_echo_cancel {
+        conf.set("no_echo_cancel", Some(true))?;
     }
 
     let conf: ProgramConfig = conf.try_into()?;

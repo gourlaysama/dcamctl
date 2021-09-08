@@ -41,6 +41,9 @@ pub struct ProgramOptions {
     #[structopt(long, short)]
     pub no_audio: bool,
 
+    #[structopt(long, short = "C")]
+    pub no_echo_cancel: bool,
+
     /// Flip method used to mirror the video.
     ///
     /// Defaults to none.

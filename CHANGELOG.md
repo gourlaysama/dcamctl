@@ -5,6 +5,10 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Packaging
+
+* fix documentation: dcamctl is licensed under the Apache License v2.0 only.
+
 ### Features
 
 * New `--no-echo-cancel/-C` option to force disable echo-canceling.

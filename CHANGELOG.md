@@ -5,6 +5,8 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+## [0.4.2] - 2021-10-27
+
 ### Changes
 
 * `--version` output now shows more build information and the default location of the configuration file.
@@ -94,7 +96,8 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/gourlaysama/dcamctl/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/gourlaysama/dcamctl/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/gourlaysama/dcamctl/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/gourlaysama/dcamctl/compare/v0.3.0...v0.3.1

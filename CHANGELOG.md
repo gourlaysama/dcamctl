@@ -5,6 +5,9 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Changes
+
+* `--version` output now shows more build information and the default location of the configuration file.
 
 ## [0.4.1] - 2021-09-08
 

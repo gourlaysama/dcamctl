@@ -4,7 +4,10 @@ use log::LevelFilter;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(about = "Use android device as webcam with v4l2loopback")]
+#[structopt(
+    about = "Use android device as webcam with v4l2loopback",
+    setting = structopt::clap::AppSettings::DisableVersion,
+)]
 pub struct ProgramOptions {
     /// Port to forward between the device and localhost.
     ///
@@ -50,6 +53,10 @@ pub struct ProgramOptions {
     /// Defaults to none.
     #[structopt(long, short, possible_values(&["horizontal", "vertical", "none"]))]
     pub flip: Option<String>,
+
+    /// Prints version information.
+    #[structopt(short = "V", long = "version")]
+    pub version: bool,
 
     /// Pass for more log output.
     #[structopt(long, short, global = true, parse(from_occurrences))]

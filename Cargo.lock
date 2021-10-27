@@ -162,6 +162,7 @@ dependencies = [
  "structopt",
  "termion",
  "tokio",
+ "version_check",
 ]
 
 [[package]]

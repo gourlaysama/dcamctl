@@ -14,7 +14,22 @@ type ReturnCode = i32;
 static DEFAULT_CONFIG: &str = include_str!("../config.yml");
 
 fn main() -> Result<()> {
-    let options = ProgramOptions::from_args();
+    let options_matches = ProgramOptions::clap().get_matches();
+    let options = ProgramOptions::from_clap(&options_matches);
+
+    if options.version {
+        // HACK to disambiguate short/long invocations for the same cli option;
+        // there has to be a better way of doing this...
+        let i = options_matches
+            .index_of("version")
+            .ok_or_else(|| anyhow!("should never happen: version set yet no version flag"))?;
+        if std::env::args().nth(i).unwrap_or_default() == "-V" {
+            print_version(false);
+        } else {
+            print_version(true);
+        }
+        return Ok(());
+    }
 
     let mut b = Builder::default();
     b.format_timestamp(None);
@@ -131,4 +146,24 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     trace!("full config: {:#?}", conf);
 
     Ok(conf)
+}
+
+fn print_version(long: bool) {
+    if long {
+        println!(
+            "{} {} ({})",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            option_env!("BUILD_ID").unwrap_or("unknown")
+        );
+        println!("rustc {} ({})", env!("BUILD_RUSTC"), env!("BUILD_INFO"));
+        if let Some(p) = directories() {
+            println!(
+                "\nconfig location: {}",
+                p.config_dir().join("config.yml").display()
+            );
+        }
+    } else {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    }
 }

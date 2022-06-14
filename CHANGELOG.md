@@ -5,6 +5,10 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Security
+
+* Update dependencies to fix [CVE-2021-45710], [CVE-2022-24713].
+
 ## [0.4.2] - 2021-10-27
 
 ### Changes
@@ -109,3 +113,5 @@
 [RUSTSEC-2021-0078]: https://rustsec.org/advisories/RUSTSEC-2021-0078
 [RUSTSEC-2021-0079]: https://rustsec.org/advisories/RUSTSEC-2021-0079
 [RUSTSEC-2021-0072]: https://rustsec.org/advisories/RUSTSEC-2021-0072
+[CVE-2021-45710]: https://github.com/advisories/GHSA-fg7r-2g4j-5cgr
+[CVE-2022-24713]: https://github.com/advisories/GHSA-m5pq-gvj9-9vr8

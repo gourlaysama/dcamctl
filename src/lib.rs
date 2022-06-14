@@ -1,7 +1,7 @@
 use std::{io::Stdout, path::Path};
 
 use crate::config::Resolution;
-use anyhow::*;
+use anyhow::{anyhow, bail, Context, Result};
 use futures::{FutureExt, StreamExt};
 use gstreamer::prelude::*;
 use log::*;

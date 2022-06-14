@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::*;
+use anyhow::{anyhow, bail, Result};
 use dcamctl::{cli::ProgramOptions, config::*};
 use dcamctl::{show, AdbServer, AudioSupport, Dcam};
 use directories_next::ProjectDirs;

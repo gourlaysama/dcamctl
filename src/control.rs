@@ -1,7 +1,7 @@
 use std::io::{Stdout, Write};
 
 use crate::cam_info::CamInfo;
-use anyhow::*;
+use anyhow::{anyhow, Error, Result};
 use futures::{FutureExt, Stream, StreamExt};
 use gstreamer::prelude::ObjectExt;
 use gstreamer_video::VideoOrientationMethod;

@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use anyhow::*;
+use anyhow::bail;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

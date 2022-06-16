@@ -2,7 +2,8 @@
 name = "dcamctl"
 version = "0.5.0-dev"
 authors = ["Antoine Gourlay <antoine@gourlay.fr>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 
 [dependencies]
 anyhow = "1"

@@ -8,8 +8,8 @@ edition = "2018"
 anyhow = "1"
 log = '0.4'
 env_logger = '0.9'
-gstreamer = { version = "0.17", features = ["v1_10"]}
-gstreamer-video = { version = "0.17", features = ["v1_10"]}
+gstreamer = { version = "0.18", features = ["v1_10"]}
+gstreamer-video = { version = "0.18", features = ["v1_10"]}
 directories-next = '2'
 ctrlc = { version = "3", features = ["termination"] }
 regex = { version = "1", default-features = false, features = ["std", "perf"]}
@@ -17,10 +17,10 @@ lenient_semver = "0.4"
 futures = "0.3"
 termion = "1"
 async-stream = "0.3"
-serde-aux = { version = "2", default-features = false }
+serde-aux = { version = "3", default-features = false }
 
 [dependencies.config]
-version = '0.11'
+version = '0.13'
 default-features = false
 features = ['yaml']
 

@@ -93,16 +93,16 @@ fn directories() -> Option<ProjectDirs> {
 
 fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     let mut empty = false;
-    let mut conf = config::Config::default();
+    let mut conf = config::Config::builder();
     // merge default values as fallback
-    conf.merge(config::File::from_str(
+    conf = conf.add_source(config::File::from_str(
         DEFAULT_CONFIG,
         config::FileFormat::Yaml,
-    ))?;
+    ));
 
     if let Some(path) = &options.config {
         debug!("looking for config file '{}'", path.display());
-        conf.merge(config::File::from(path.as_ref()))?;
+        conf = conf.add_source(config::File::from(path.as_ref()));
         info!("using config from '{}'", path.canonicalize()?.display());
     } else if let Some(p) = directories() {
         let f = p.config_dir().join("config.yml");
@@ -110,7 +110,7 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
 
         if f.exists() {
             info!("using config from '{}'", f.canonicalize()?.display());
-            conf.merge(config::File::from(f))?;
+            conf = conf.add_source(config::File::from(f));
         } else {
             empty = true;
         }
@@ -120,29 +120,31 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     };
 
     fn set_conf_from_options(
-        conf: &mut config::Config,
+        conf: config::ConfigBuilder<config::builder::DefaultState>,
         option: &Option<String>,
         key: &str,
-    ) -> Result<()> {
-        if let Some(value) = option {
-            conf.set(key, Some(value.as_str()))?;
-        }
+    ) -> Result<config::ConfigBuilder<config::builder::DefaultState>> {
+        let c = if let Some(value) = option {
+            conf.set_override(key, Some(value.as_str()))?
+        } else {
+            conf
+        };
 
-        Ok(())
+        Ok(c)
     }
 
-    set_conf_from_options(&mut conf, &options.port.map(|p| p.to_string()), "port")?;
-    set_conf_from_options(&mut conf, &options.device, "device")?;
-    set_conf_from_options(&mut conf, &options.resolution, "resolution")?;
-    set_conf_from_options(&mut conf, &options.flip, "flip")?;
+    conf = set_conf_from_options(conf, &options.port.map(|p| p.to_string()), "port")?;
+    conf = set_conf_from_options(conf, &options.device, "device")?;
+    conf = set_conf_from_options(conf, &options.resolution, "resolution")?;
+    conf = set_conf_from_options(conf, &options.flip, "flip")?;
     if options.no_audio {
-        conf.set("no_audio", Some(true))?;
+        conf = conf.set_override("no_audio", Some(true))?;
     }
     if options.no_echo_cancel {
-        conf.set("no_echo_cancel", Some(true))?;
+        conf = conf.set_override("no_echo_cancel", Some(true))?;
     }
 
-    let conf: ProgramConfig = conf.try_into()?;
+    let conf: ProgramConfig = conf.build()?.try_deserialize()?;
     trace!("full config: {:#?}", conf);
 
     Ok(conf)

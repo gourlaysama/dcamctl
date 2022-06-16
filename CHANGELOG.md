@@ -7,7 +7,7 @@
 
 ## [0.4.3] - 2022-06-15
 
-### Security
+### Security
 
 * Update dependencies to fix [CVE-2021-45710], [CVE-2022-24713].
 

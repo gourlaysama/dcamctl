@@ -6,7 +6,7 @@ It uses adb to talk to the device, gstreamer and pulseaudio to handle the audio 
 
 ## Installation
 
-If you are a **Fedora** (32+, x86_64/aarch64/armhfp) user, you can install dcamctl with:
+If you are a **Fedora** (34+, x86_64/aarch64/armhfp) user, you can install dcamctl with:
 
 ```sh
 sudo dnf copr enable gourlaysama/dcamctl

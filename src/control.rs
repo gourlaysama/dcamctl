@@ -122,7 +122,7 @@ impl CamControl {
 }
 
 fn get_flip_method(video_flip: &gstreamer::Element) -> Result<VideoOrientationMethod> {
-    let m: VideoOrientationMethod = video_flip.property("video-direction")?.get()?;
+    let m: VideoOrientationMethod = video_flip.property("video-direction");
 
     Ok(m)
 }
@@ -263,7 +263,7 @@ async fn process_commands_inner(control: CamControl) -> Result<()> {
                     Horiz => Vert,
                     _ => Identity,
                 };
-                control.video_flip.set_property("video-direction", new)?;
+                control.video_flip.set_property("video-direction", new);
             }
         }
 

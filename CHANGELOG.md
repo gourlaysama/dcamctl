@@ -5,6 +5,10 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Packaging
+
+* The Minimum Supported Rust Version is now 1.57.
+
 ## [0.4.3] - 2022-06-15
 
 ### Security

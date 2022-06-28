@@ -71,7 +71,7 @@ Build from source with:
 $ git clone https://github.com/gourlaysama/dcamctl -b v0.4.3
 $ cd dcamctl
 $ cargo build --release
-$ ./target/release/dcamctl --version
+$ ./target/release/dcamctl -V
 dcamctl 0.4.3
 ```
 

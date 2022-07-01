@@ -1,4 +1,4 @@
-use std::{io::Stdout, path::Path};
+use std::{fmt::Write, io::Stdout, path::Path};
 
 use crate::config::Resolution;
 use anyhow::{anyhow, bail, Context, Result};
@@ -98,9 +98,9 @@ impl Dcam {
 
         let mut pipeline_desc = String::new();
         if audio.is_some() {
-            pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port));
+            write!(pipeline_desc, "souphttpsrc location=http://127.0.0.1:{}/audio.wav do-timestamp=true is-live=true ! audio/x-raw,format=S16LE,layout=interleaved,rate=44100,channels=1 ! queue ! pulsesink device=dcamctl_webcam sync=true ", port)?;
         }
-        pipeline_desc.push_str(&format!("souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoflip name=flip_elem method=\"{}\" ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, method,  caps, device_str));
+        write!(pipeline_desc, "souphttpsrc location=http://127.0.0.1:{}/videofeed do-timestamp=true is-live=true ! queue ! multipartdemux ! decodebin ! videoflip name=flip_elem method=\"{}\" ! videoconvert ! videoscale ! {} ! v4l2sink device={} sync=true", port, method,  caps, device_str)?;
 
         let pipeline = gstreamer::parse_launch(&pipeline_desc)?
             .downcast()

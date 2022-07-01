@@ -29,10 +29,9 @@ features = ['yaml']
 version = '1'
 features = ['derive']
 
-[dependencies.structopt]
-version = '0.3'
-default-features = false
-features = ['suggestions']
+[dependencies.clap]
+version = "3"
+features = ["derive", "cargo", "wrap_help"]
 
 [dependencies.tokio]
 version = "1"

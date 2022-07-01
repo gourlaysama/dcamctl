@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
+use clap::{IntoApp, FromArgMatches};
 use dcamctl::{cli::ProgramOptions, config::*};
 use dcamctl::{show, AdbServer, AudioSupport, Dcam};
 use directories_next::ProjectDirs;
 use env_logger::{Builder, Env};
 use log::*;
-use structopt::StructOpt;
 use tokio::runtime;
 
 type ReturnCode = i32;
@@ -14,10 +14,10 @@ type ReturnCode = i32;
 static DEFAULT_CONFIG: &str = include_str!("../config.yml");
 
 fn main() -> Result<()> {
-    let options_matches = ProgramOptions::clap().get_matches();
-    let options = ProgramOptions::from_clap(&options_matches);
+    let options_matches = ProgramOptions::command().get_matches();
+    let options = ProgramOptions::from_arg_matches(&options_matches)?;
 
-    if options.version {
+    if options_matches.is_present("version") {
         // HACK to disambiguate short/long invocations for the same cli option;
         // there has to be a better way of doing this...
         let i = options_matches

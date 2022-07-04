@@ -33,6 +33,10 @@ features = ['derive']
 version = "3"
 features = ["derive", "cargo", "wrap_help"]
 
+[build-dependencies.clap]
+version = "3"
+features = ["derive", "cargo", "wrap_help"]
+
 [dependencies.tokio]
 version = "1"
 features = ["rt-multi-thread", "signal"]
@@ -44,6 +48,8 @@ features = ["json"]
 
 [build-dependencies]
 version_check = "0.9"
+log = "0.4"
+clap_complete = "3"
 
 [profile.release]
 lto = true

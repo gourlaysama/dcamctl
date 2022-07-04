@@ -8,6 +8,7 @@
 ### Packaging
 
 * The Minimum Supported Rust Version is now 1.57.
+* Shell completions are now generated (for bash, zsh and fish) and provided in the COPR package.
 
 ## [0.4.3] - 2022-06-15
 

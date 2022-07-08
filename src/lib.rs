@@ -26,10 +26,18 @@ impl AdbServer {
         Ok(())
     }
 
-    pub fn connect(port: u16) -> Result<AdbServer> {
+    pub fn connect(port: u16, serial: Option<&str>) -> Result<AdbServer> {
         let port_str = format!("tcp:{}", port);
-        run_cmd!("adb", "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
-        debug!("forwarding adb port {} to 127.0.0.1:{}", port, port);
+        if let Some(serial) = serial {
+            run_cmd!("adb", "-s", serial, "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
+            debug!(
+                "forwarding adb port {} on device {} to 127.0.0.1:{}",
+                port, serial, port
+            );
+        } else {
+            run_cmd!("adb", "forward", &port_str, &port_str => "could not enable adb tcp forwarding");
+            debug!("forwarding adb port {} to 127.0.0.1:{}", port, port);
+        }
 
         Ok(AdbServer { port })
     }

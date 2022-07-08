@@ -62,7 +62,7 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     check_kernel_module()?;
 
     AdbServer::init()?;
-    let _server = AdbServer::connect(conf.port)?;
+    let _server = AdbServer::connect(conf.port, conf.serial.as_deref())?;
 
     gstreamer::init()?;
 

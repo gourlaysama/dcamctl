@@ -5,6 +5,10 @@
 <!-- next-header -->
 ## [Unreleased] - TBD
 
+### Features
+
+* New `--serial/-s` option and configuration value to give a custom android serial to use with adb. If unset, adb will be called without serial, which will throw an error if there is more than one device connected.
+
 ### Packaging
 
 * The Minimum Supported Rust Version is now 1.57.
@@ -104,7 +108,6 @@
 * New `--device/-d` option to change the v4l2loopback video device to use.
 * New `--port/p` option to change the local port to forward between the device and the loopback interface with adb.
 * New `--resolution/r` option to change the resolution.
-
 
 <!-- next-url -->
 [Unreleased]: https://github.com/gourlaysama/dcamctl/compare/v0.4.3...HEAD

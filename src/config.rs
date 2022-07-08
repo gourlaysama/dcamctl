@@ -12,6 +12,7 @@ pub struct ProgramConfig {
     pub no_audio: bool,
     pub no_echo_cancel: bool,
     pub flip: Option<String>,
+    pub serial: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -55,6 +55,10 @@ pub struct ProgramOptions {
     #[clap(long, short, possible_values(&["horizontal", "vertical", "none"]), value_name = "METHOD")]
     pub flip: Option<String>,
 
+    /// Connect to android device with the given serial.
+    #[clap(long, short, value_name = "ANDROID_SERIAL")]
+    pub serial: Option<String>,
+
     /// Pass for more log output.
     #[clap(
         long,

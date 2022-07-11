@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
-use clap::{IntoApp, FromArgMatches};
+use clap::{FromArgMatches, IntoApp};
 use dcamctl::{cli::ProgramOptions, config::*};
 use dcamctl::{show, AdbServer, AudioSupport, Dcam};
 use directories_next::ProjectDirs;
@@ -62,7 +62,7 @@ async fn run(options: ProgramOptions) -> Result<ReturnCode> {
     check_kernel_module()?;
 
     AdbServer::init()?;
-    let _server = AdbServer::connect(conf.port)?;
+    let _server = AdbServer::connect(conf.port, conf.serial.as_deref())?;
 
     gstreamer::init()?;
 
@@ -137,6 +137,7 @@ fn make_config(options: ProgramOptions) -> Result<ProgramConfig> {
     conf = set_conf_from_options(conf, &options.device, "device")?;
     conf = set_conf_from_options(conf, &options.resolution, "resolution")?;
     conf = set_conf_from_options(conf, &options.flip, "flip")?;
+    conf = set_conf_from_options(conf, &options.serial, "serial")?;
     if options.no_audio {
         conf = conf.set_override("no_audio", Some(true))?;
     }

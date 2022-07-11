@@ -1,0 +1,70 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    name: Publish man page and completions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create release text
+        run: |
+          G_TAG=${{ github.ref }}
+          G_VERSION=${G_TAG#refs/tags/v}
+          echo "G_VERSION=$G_VERSION" >> $GITHUB_ENV
+          awk "NR==3 { print \$0 }; S && /^## / { S=0 } ; S { print \$0 }; /\[$G_VERSION\][^:]/ { S=1 }" < CHANGELOG.md > GH_RELEASE.md
+      - name: Create Github release
+        id: gh-release
+        uses:  softprops/action-gh-release@v1
+        with:
+          name: dcamctl ${{ env.G_VERSION }}
+          draft: true
+          body_path: GH_RELEASE.md
+          token: ${{ secrets.GSAMA_RELEASE_CREATION }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: x86_64-unknown-linux-musl
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pandoc libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - name: Generate completions
+        uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: -Ccodegen-units=1 -Clink-arg=-Wl,-z,relro
+        with:
+          command: build
+          args: --verbose --release
+      - name: Prepare package
+        run: |
+          G_TAG=${{ github.ref }}
+          G_VERSION=${G_TAG#refs/tags/v}
+          DIST_DIR="dcamctl-$G_VERSION-assets"
+          TARGET_FILE="$DIST_DIR.tar.gz"
+          rm -rf "$DIST_DIR"
+          mkdir -p "$DIST_DIR/complete"
+          cp -p README.md "$DIST_DIR"
+          cp -p CHANGELOG.md "$DIST_DIR"
+          cp -p LICENSE "$DIST_DIR"
+          cp -p target/release/build/dcamctl-*/out/dcamctl.bash "$DIST_DIR/complete"
+          cp -p target/release/build/dcamctl-*/out/dcamctl.fish "$DIST_DIR/complete"
+          cp -p target/release/build/dcamctl-*/out/_dcamctl "$DIST_DIR/complete"
+          pandoc -s --to man doc/dcamctl.1.md -o "$DIST_DIR/dcamctl.1"
+          tar -czf "$TARGET_FILE" "$DIST_DIR"
+      - name: Upload package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          G_TAG=${{ github.ref }}
+          G_VERSION=${G_TAG#refs/tags/}
+          gh release upload $G_VERSION *.tar.gz

@@ -67,6 +67,12 @@ Query options
 
     This option overrides the corresponding value from the config.
 
+-s, \--serial  _ANDROID_SERIAL_
+
+:   Connect to android device with the given serial.
+
+    This option overrides the corresponding value from the config.
+
 Flags
 -----
 

@@ -12,7 +12,8 @@
 ### Packaging
 
 * The Minimum Supported Rust Version is now 1.57.
-* Shell completions are now generated (for bash, zsh and fish) and provided in the COPR package.
+* Shell completions are now generated (for bash, zsh and fish) and provided on the release page and in the COPR package.
+* There is now a man page for girouette available on the release page (generated with pandoc, from `doc/dcamctl.1.md`).
 
 ## [0.4.3] - 2022-06-15
 
